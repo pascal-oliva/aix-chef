@@ -201,7 +201,11 @@ format or under the WWWW-XX-YY-ZZZZ format')
         Log.log_debug('version=' + version)
         sps_of_tl = sps_per_tl[version]
         Log.log_debug('sps_of_tl=' + sps_of_tl.to_s)
-        returned = true if sps_of_tl.include? sp
+        if !sps_of_tl.nil?
+          returned = true if sps_of_tl.include? sp
+        else
+          returned = false
+        end
         returned
       end
 

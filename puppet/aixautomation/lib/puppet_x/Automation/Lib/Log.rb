@@ -1,3 +1,4 @@
+require_relative './Constants.rb'
 require 'logger'
 require 'open3'
 require 'pp'
@@ -16,11 +17,13 @@ module Automation
     # description : wrapper of Logger with a singleton-design-pattern
     # #########################################################################
     class LoggerSingleton
-      # timestamp = Time.now.strftime('%Y-%m-%d_%H-%M-%S')
-      # log_file_name = '/tmp/AixAutomation_' + timestamp.to_s + '.log'
-      log_file_name = '/tmp/PuppetAixAutomation.log'
+      log_file_dir = ::File.join(Constants.output_dir,
+                                 'logs')
+      ::FileUtils.mkdir_p(log_file_dir) unless ::File.directory?(log_file_dir)
+
+      log_file_name = ::File.join(log_file_dir,
+                                  'PuppetAixAutomation.log')
       @@instance = Logger.new(log_file_name, 12, 1_024_000)
-      @@instance.datetime_format = '%Y-%m-%d %H:%M:%S'
 
       def self.instance
         @@instance
@@ -91,7 +94,7 @@ module Automation
       def self.log_warning(message)
         # This is displayed even without --debug
         Puppet.warning(message)
-        LoggerSingleton.instance.warning {message}
+        LoggerSingleton.instance.debug {'WARNING ' + message}
       rescue StandardError
         p 'WARNING ' + message
       end
@@ -100,14 +103,16 @@ module Automation
       # name : log_err
       # param :input:message:string
       # return : none
-      # description : to log in error mode, always displayed
+      # description : to log in error mode, always displayed (in red !)
       #  rescue is here to be able to run code outside of Puppet
       # #######################################################################
       def self.log_err(message)
         begin
           # This is displayed even without --debug
           Puppet.err(message)
-          LoggerSingleton.instance.error {message}
+          #LoggerSingleton.instance.warn {"\033[0;31m#{message}\033[0m"} if message =~/There is no efix data on this
+          # system/
+          LoggerSingleton.instance.error {"\033[0;31m#{message}\033[0m"}
         rescue StandardError
           p 'ERROR ' + message
         end
@@ -116,7 +121,12 @@ module Automation
           ###########################################################
           # To have execution stack of all threads into one file
           ###########################################################
-          File.open("/tmp/PuppetAixAutomation_ruby_backtrace_#{Process.pid}.txt", 'a') do |f|
+          log_file_dir = ::File.join(Constants.output_dir,
+                                     'logs')
+          ::FileUtils.mkdir_p(log_file_dir) unless ::File.directory?(log_file_dir)
+          stack_file = ::File.join(log_file_dir,
+                                   "PuppetAixAutomation_ruby_backtrace_#{Process.pid}.txt")
+          File.open(stack_file, 'a') do |f|
             f.puts "--- dump backtrace for all threads at #{Time.now}"
             if Thread.current.respond_to?(:backtrace)
               Thread.list.each do |t|

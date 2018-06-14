@@ -5,14 +5,15 @@
 #
 # Manifest init.pp contains all declarations to be applied on your systems.
 # You can launch it, by using:
-#    puppet apply --noop --modulepath=/etc/puppet/modules -e "include aixautomation"
+#    puppet apply --noop --modulepath=/etc/puppetlabs/code/environments/production/modules -e "include aixautomation"
 #  to check for compilation errors and view a log of events
 # Or by fully applying the manifest in a real environment, by using:
-#    puppet apply --debug --modulepath=/etc/puppet/modules -e "include aixautomation"
+#    puppet apply --debug --modulepath=/etc/puppetlabs/code/environments/production/modules -e "include aixautomation"
 #  to apply manifest and run it.
 # Or by using:
-#    puppet apply --debug --logdest=/tmp/Puppet.log \
-#                 --modulepath=/etc/puppet/modules -e "include aixautomation"
+#    puppet apply --debug \
+#          --logdest=/etc/puppetlabs/code/environments/production/modules/aixautomation/output/logs/Puppet.log \
+#          --modulepath=/etc/puppetlabs/code/environments/production/modules -e "include aixautomation"
 #  to apply manifest and run it, keeping all logs into a file
 #
 # This examples.init.pp contains several samples of declarations with complete explanations
@@ -28,41 +29,67 @@
 /*
 class aixautomation {
   # This rule allows to perform download thru suma provider
-  #  to get update of 7100-03 TL into /export/extra/puppet/suma
-  #  for a system which is currently in 7100-01
-  # lpp_source created is named : PAA_TL_7100-01_7100-03
-  #  and this same name needs to be used to perform update
-  # "/export/extra/puppet/suma" is suggested as root directory of download
-  #  It should be an ad hoc file system dedicated to download
-  #   data, keep this file system separated from the system so prevent
-  #   saturation
-  download { "my_download_1":
-    provider   => suma,
-    ensure     => present,
-    name       => "my_download_1",
-    type       => "TL",
-    root       => "/export/extra/puppet/suma",
-    from       => "7100-01",
-    to         => "7100-03",
-    lpp_source => "PAA_TL_7100-01_7100-03",
-  }
-}
-*/
-/*
-class aixautomation {
-  # This rule allows to perform download thru suma provider
   #  to get update of 7100-03-07-1614 SP into /export/extra/puppet/suma
   #  for a system which is currently in 7100-03
   # lpp_source created is named : PAA_SP_7100-03_7100-03-07-1614
   #  and this same name needs to be used to perform update
-  # "/export/extra/puppet/suma" is suggested as root directory of download
+  # "/export/extra/puppet/suma" is the root directory of download
   #  It should be an ad hoc file system dedicated to download
-  #   data, keep this file system separated from the system so prevent
-  #   saturation
-  download { "my_download_2":
+  #   data, keep this file system separated from the system to prevent
+  #   saturation.
+  download { "my_download_3":
     provider   => suma,
     ensure     => present,
-    name       => "my_download_2",
+    name       => "my_download_3",
+    type       => "SP",
+    root       => "/export/extra/puppet/suma",
+    from       => "7100-03",
+    to         => "7100-03-07-1614",
+    lpp_source => "PAA_SP_7100-03_7100-03-07-1614",
+  }
+  # This rule allows to perform download thru suma provider
+  #  to get update of 7100-04 TL into /export/extra/puppet/suma
+  #  for a system which is currently in 7100-03
+  # lpp_source created is named : PAA_TM_7100-03_7100-04
+  #  and this same name needs to be used to perform update
+  # "/export/extra/puppet/suma" is the root directory of download
+  #  It should be an ad hoc file system dedicated to download
+  #   data, keep this file system separated from the system to prevent
+  #   saturation.
+  download { "my_download_4":
+    provider   => suma,
+    ensure     => present,
+    name       => "my_download_4",
+    type       => "TL",
+    root       => "/export/extra/puppet/suma",
+    from       => "7100-03",
+    to         => "7100-04",
+  }
+  # This rule allows to perform download thru suma provider
+  #  to get update of 7100-05 TL into /export/extra/puppet/suma
+  #  for a system which is currently in 7100-03
+  # lpp_source created is named : PAA_TM_7100-03_7100-05
+  #  and this same name needs to be used to perform update
+  # "/export/extra/puppet/suma" is the root directory of download
+  #  It should be an ad hoc file system dedicated to download
+  #   data, keep this file system separated from the system to prevent
+  #   saturation.
+  download { "my_download_5":
+    provider   => suma,
+    ensure     => present,
+    name       => "my_download_5",
+    type       => "TL",
+    root       => "/export/extra/puppet/suma",
+    from       => "7100-03",
+    to         => "7100-05",
+  }
+  # This rule allows to perform cleaning of download directory
+  #  "/export/extra/puppet/suma/lpp_dource/SP/7100-037100-03-07-1614""
+  #  Moreover the NIM resource "PAA_SP_7100-03_7100-03-07-1614" is removed.
+  download { "my_clean_3":
+    provider   => suma,
+    ensure     => absent,
+    name       => "my_clean_3",
     type       => "SP",
     root       => "/export/extra/puppet/suma",
     from       => "7100-03",

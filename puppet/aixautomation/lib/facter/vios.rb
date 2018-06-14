@@ -1,5 +1,5 @@
-# require_relative '../puppet_x/Automation/Lib/Log.rb'
 # require_relative '../puppet_x/Automation/Lib/Constants.rb'
+#  require_relative '../puppet_x/Automation/Lib/Log.rb'
 # require_relative '../puppet_x/Automation/Lib/Remote/c_rsh.rb'
 #
 # ##########################################################################
@@ -119,6 +119,23 @@
 #       end
 #
 #     end
+#    # Failure
+# Log.log_err('vios in failure="' +vios_failure.to_s+ '"')
+# # persist to yaml
+# failure_result_yml_file = ::File.join(Constants.output_dir,
+# 'facter',
+# 'vios_in_failure.yml')
+# File.write(failure_result_yml_file, vios_failure.to_yaml)
+# Log.log_debug('Refer to "' +failure_result_yml_file+ '" to have results of "vios in failure" facter.')
+#
+# # Success
+# # persist to yaml
+# result_yml_file = ::File.join(Constants.output_dir,
+# 'facter',
+# 'vios.yml')
+# File.write(result_yml_file, vios.to_yaml)
+# Log.log_debug('Refer to "' +result_yml_file+ '" to have results of "vios" facter.')
+# standalones
 #
 #     Log.log_info("vioss=" + vioss.to_s)
 #     vioss

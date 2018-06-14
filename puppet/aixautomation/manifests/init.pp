@@ -1,12 +1,6 @@
-# class aixautomation {
-#   patchmngt { "status":
-#     provider  => nimpush,
-#     ensure    => present,
-#     name      => "status",
-#     action    => "status",
-#     targets   => "quimby01 quimby02 quimby03 quimby04 quimby05 quimby06 quimby07 quimby08 quimby09 quimby10 quimby11 quimby12",
-#   }
-# }
+# #
+# # TODO : This file needs to be cleaned
+# #
 # class aixautomation {
 #   fix { "ifix_remove":
 #     provider => flrtvc,
@@ -21,35 +15,129 @@
 #     name     => "ifix_install",
 #     ensure   => present,
 #     to_step  => "installResource",
-#     targets  => "quimby01 quimby02 quimby03 quimby04 quimby05 quimby06 quimby07 quimby08 quimby09 quimby10 quimby11 quimby12",
-#     clean => "yes",
-#     root     => "/export/extra/puppet/flrtvc",
-#   }
-# }
-# class aixautomation {
-#   fix { "ifix_install":
-#     provider => flrtvc,
-#     name     => "ifix_install",
-#     ensure   => present,
-#     to_step  => "installResource",
-#     #level => "hiper",
+#     targets  => "quimby01",
 #     clean    => "yes",
-#     targets  =>
-#       "quimby01 quimby02 quimby03 quimby04 quimby05 quimby06 quimby07 quimby08 quimby09 quimby10 quimby11 quimby12",
 #     root     => "/export/extra/puppet/flrtvc",
 #   }
 # }
 class aixautomation {
-  patchmngt { "dos2unix_mngt2":
-    provider   => nimpush,
-    ensure     => absent,
-    name       => "dos2unix_mngt2",
-    action     => "install",
-    lpp_source => "dos2unix",
-    targets    => "quimby01, quimby02",
-    sync       => "yes",
+  fix { "ifix_install":
+    provider => flrtvc,
+    name     => "ifix_install",
+    ensure   => present,
+    to_step  => "installResource",
+    #level => "sec",
+    clean    => "yes",
+    targets  => "castor8",
+    root     => "/flrtvc/paul",
   }
 }
+# class aixautomation {
+#   download { "test_suma_download_SP_from_6100-preview":
+#     provider   => suma,
+#     ensure     => present,
+#     name       => "test_suma_download_SP_from_6100-preview",
+#     type       => "SP",
+#     root       => "/home/puppet/suma",
+#     from       => "6100-08",
+#     to         => "6100-08-03-1339",
+#     to_step    => "download",
+#     lpp_source => "PAA_SP_SP_from_preview",
+#   }
+# }
+
+# class aixautomation {
+#   # This rule allows to perform download thru suma provider
+#   #  to get update of 7100-03-07-1614 SP into /export/extra/puppet/suma
+#   #  for a system which is currently in 7100-03
+#   # lpp_source created is named : PAA_SP_7100-03_7100-03-07-1614
+#   #  and this same name needs to be used to perform update
+#   # "/export/extra/puppet/suma" is the root directory of download
+#   #  It should be an ad hoc file system dedicated to download
+#   #   data, keep this file system separated from the system to prevent
+#   #   saturation.
+#   download { "my_download_714":
+#     provider   => suma,
+#     ensure     => present,
+#     name       => "my_download_714",
+#     type       => "SP",
+#     root       => "/export/extra/puppet/suma",
+#     from       => "7100-04",
+#     to         => "7100-04-01-1543",
+#     to_step    => "download",
+#     lpp_source => "PAA_SP_7100-04_7100-04-01-1543",
+#   }
+#   patchmngt { "update quimby09 to 7100-04-01-1543":
+#     provider   => nimpush,
+#     ensure     => present,
+#     name       => "update quimby09 to 7100-04-01-1543",
+#     action     => "update",
+#     targets    => "quimby11",
+#     sync       => "yes",
+#     lpp_source => "PAA_SP_7100-04_7100-04-01-1543",
+#   }
+# }
+#   # This rule allows to perform download thru suma provider
+#   #  to get update of 7100-04 TL into /export/extra/puppet/suma
+#   #  for a system which is currently in 7100-03
+#   # lpp_source created is named : PAA_TM_7100-03_7100-04
+#   #  and this same name needs to be used to perform update
+#   # "/export/extra/puppet/suma" is the root directory of download
+#   #  It should be an ad hoc file system dedicated to download
+#   #   data, keep this file system separated from the system to prevent
+#   #   saturation.
+#   download { "my_download_4":
+#     provider => suma,
+#     ensure   => present,
+#     name     => "my_download_4",
+#     type     => "TL",
+#     root     => "/export/extra/puppet/suma",
+#     from     => "7100-03",
+#     to       => "7100-04",
+#   }
+#   # This rule allows to perform download thru suma provider
+#   #  to get update of 7100-05 TL into /export/extra/puppet/suma
+#   #  for a system which is currently in 7100-03
+#   # lpp_source created is named : PAA_TM_7100-03_7100-05
+#   #  and this same name needs to be used to perform update
+#   # "/export/extra/puppet/suma" is the root directory of download
+#   #  It should be an ad hoc file system dedicated to download
+#   #   data, keep this file system separated from the system to prevent
+#   #   saturation.
+#   download { "my_download_5":
+#     provider => suma,
+#     ensure   => present,
+#     name     => "my_download_5",
+#     type     => "TL",
+#     root     => "/export/extra/puppet/suma",
+#     from     => "7100-03",
+#     to       => "7100-05",
+#   }
+#   # This rule allows to perform cleaning of download directory
+#   #  "/export/extra/puppet/suma/lpp_dource/SP/7100-037100-03-07-1614""
+#   #  Moreover the NIM resource "PAA_SP_7100-03_7100-03-07-1614" is removed.
+#   download { "my_clean_3":
+#     provider   => suma,
+#     ensure     => absent,
+#     name       => "my_clean_3",
+#     type       => "SP",
+#     root       => "/export/extra/puppet/suma",
+#     from       => "7100-03",
+#     to         => "7100-03-07-1614",
+#     lpp_source => "PAA_SP_7100-03_7100-03-07-1614",
+#   }
+# }
+# class aixautomation {
+#   patchmngt { "dos2unix_mngt2":
+#     provider   => nimpush,
+#     ensure     => absent,
+#     name       => "dos2unix_mngt2",
+#     action     => "install",
+#     lpp_source => "dos2unix",
+#     targets    => "quimby01, quimby02",
+#     sync       => "yes",
+#   }
+# }
 # patchmngt { "dos2unix_mngt4":
 #   provider  => nimpush,
 #   ensure    => absent,
@@ -749,7 +837,7 @@ class aixautomation {
 #   lpp_source => "PAA_7100-00-10-1334_7100-01-06-1241",
 # }
 #
-# Info: [STDERR] 0500-035 No fixes match your query.
+# Info:  0500-035 No fixes match your query.
 # download { "my_download":
 #   provider => suma,
 #   ensure => present,

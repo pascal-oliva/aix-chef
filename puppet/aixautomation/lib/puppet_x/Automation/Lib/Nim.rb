@@ -123,19 +123,18 @@ do |_stdin, stdout, stderr, wait_thr|
           end
           stdout.each_line do |line|
             line.chomp!
-            Log.log_debug("\033[2K\r#{line}") if line =~ /^Processing Efix Package [0-9]+ of [0-9]+.$/
-            Log.log_debug("\n#{line}") if line =~ /^EPKG NUMBER/
-            Log.log_debug(line) if line =~ /^===========/
-            Log.log_debug("\033[0;31m#{line}\033[0m") if line =~ /INSTALL.*?FAILURE/
-            Log.log_debug("\033[0;32m#{line}\033[0m") if line =~ /INSTALL.*?SUCCESS/
-            Log.log_info("[STDOUT] #{line}")
+             Log.log_debug("\033[2K\r#{line}") if line =~ /^Processing Efix Package [0-9]+ of [0-9]+.$/
+             Log.log_debug("\n#{line}") if line =~ /^EPKG NUMBER/
+             Log.log_debug("\n#{line}") if line =~ /^===========/
+             Log.log_debug("\033[0;31m#{line}\033[0m") if line =~ /INSTALL.*?FAILURE/
+             Log.log_debug("\033[0;32m#{line}\033[0m") if line =~ /INSTALL.*?SUCCESS/
           end
           stderr.each_line do |line|
-            Log.log_err("[STDERR] #{line.chomp} !")
+            line.chomp!
+            Log.log_err(" #{line} !")
           end
           unless stderr.nil?
-            Log.log_err('[STDERR] To better understand error case, you should \
-refer to remote file ' + target + ':/var/adm/ras/emgr.log')
+            Log.log_err(' To better understand error case, you should refer to remote file ' + target + ':/var/adm/ras/emgr.log')
           end
           thr.exit
           wait_thr.value # Process::Status object returned.
@@ -163,7 +162,9 @@ target + ' lpp_source=' + lpp_source)
           cmd = "/bin/echo \"#{remote_output[0]}\" | /bin/awk '{print $3}' | /bin/sort -u"
           stdout, stderr, status = Open3.capture3(cmd)
           Log.log_debug("cmd   =#{cmd}")
-          Log.log_debug("status=#{status}")
+          if !status.nil?
+            Log.log_debug("status=#{status}")
+          end
           if status.success?
             if !stdout.nil? && !stdout.strip.empty?
               nb_of_ifixes = stdout.lines.count
@@ -192,7 +193,9 @@ target + ' lpp_source=' + lpp_source)
               Log.log_debug("No ifixes to remove on #{target}.")
             end
           else
-            Log.log_err("stderr=#{stderr}")
+            if !stderr.nil? && !stderr.strip.empty?
+              Log.log_err("stderr=#{stderr}")
+            end
           end
         else
           Log.log_debug("No ifixes to remove on #{target}.")
@@ -223,17 +226,17 @@ target + ' lpp_source=' + lpp_source)
             line.chomp!
             Log.log_debug("\033[2K\r#{line}") if line =~ /^Processing Efix Package [0-9]+ of [0-9]+.$/
             Log.log_debug("\n#{line}") if line =~ /^EPKG NUMBER/
-            Log.log_debug(line) if line =~ /^===========/
+            Log.log_debug("\n#{line}") if line =~ /^===========/
             Log.log_debug("\033[0;31m#{line}\033[0m") if line =~ /INSTALL.*?FAILURE/
             Log.log_debug("\033[0;32m#{line}\033[0m") if line =~ /INSTALL.*?SUCCESS/
-            Log.log_info("[STDOUT] #{line}")
           end
           stderr.each_line do |line|
-            Log.log_err("[STDERR] #{line.chomp} !")
+            line.chomp!
+            Log.log_err(" #{line} !")
           end
           unless stderr.nil?
-            Log.log_err('[STDERR] To better understand error case, you should \
-refer to remote file ' + target + ':/var/adm/ras/emgr.log')
+            Log.log_err(' To better understand error case, you should refer to remote file ' + target +
+                            ':/var/adm/ras/emgr.log')
           end
           thr.exit
           wait_thr.value # Process::Status object returned.
@@ -319,34 +322,25 @@ above error!" unless exit_status.success?
       #############################
       #     E X C E P T I O N     #
       #############################
-      class NimError < StandardError
-      end
-
-      class NimCustOpError < NimError
-      end
-
-      class NimMaintOpError < NimError
-      end
-
-      class NimDefineError < NimError
-      end
-
-      class NimRemoveError < NimError
-      end
-
-      class NimRebootOpError < NimError
-      end
-
       class NimHmcInfoError < StandardError
       end
-
       class NimLparInfoError < StandardError
       end
-
       class NimAltDiskInstallError < StandardError
       end
-
       class NimAltDiskInstallTimedOut < StandardError
+      end
+      class NimError < StandardError
+      end
+      class NimCustOpError < NimError
+      end
+      class NimMaintOpError < NimError
+      end
+      class NimDefineError < NimError
+      end
+      class NimRemoveError < NimError
+      end
+      class NimRebootOpError < NimError
       end
     end # Nim
   end

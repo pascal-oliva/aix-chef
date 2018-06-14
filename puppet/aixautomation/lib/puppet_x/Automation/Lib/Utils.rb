@@ -48,17 +48,17 @@ module Automation
       # ########################################################################
       def self.execute2(command, command_output)
         Log.log_debug('Utils.execute2 command : ' + command)
-        exit_status=Open3.popen3({'LANG' => 'C'}, command) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({'LANG' => 'C'}, command) do |_stdin, stdout, stderr, wait_thr|
           unless exit_status.nil?
             Log.log_debug('   exit_status=' + exit_status.to_s)
           end
           command_output[0] = ''
           stdout.each_line do |line|
             command_output[0] = command_output[0] + line
-            Log.log_debug("   [STDOUT] #{line.chomp}")
+            Log.log_debug("    #{line.chomp}")
           end
           stderr.each_line do |line|
-            Log.log_err("   [STDERR] #{line.chomp}")
+            Log.log_err("    #{line.chomp}")
           end
           wait_thr.value # Process::Status object returned.
         end
@@ -76,12 +76,17 @@ module Automation
           cmd = "/usr/sbin/lsnim -l #{lppsource}"
           stdout, stderr, status = Open3.capture3(cmd.to_s)
           Log.log_debug("cmd   =#{cmd}")
-          Log.log_debug("stdout=#{stdout}")
-          Log.log_err("stderr=#{stderr}")
-          Log.log_debug("status=#{status}")
+          if !stdout.nil? && !stdout.strip.empty?
+            Log.log_debug("stdout=#{stdout}")
+          end
+          if !stderr.nil? && !stderr.strip.empty?
+            Log.log_err("stderr=#{stderr}")
+          end
+          if !status.nil?
+            Log.log_debug("status=#{status}")
+          end
           unless status.success?
-            Log.log_err("This \"#{lppsource}\" \
-lppsource does not exist as simple NIM resource.")
+            Log.log_err("This \"#{lppsource}\" lppsource does not exist as simple NIM resource.")
           end
         else
           Log.log_debug("This \"#{lppsource}\" lppsource parameter is empty.")
@@ -152,10 +157,15 @@ lppsource does not exist as simple NIM resource.")
           # Log.log_debug("cmd   =#{cmd}")
           # Log.log_debug("status=#{status}")
           if !status.success?
-            Log.log_err("stderr=#{stderr}")
+            if !stderr.nil? && !stderr.strip.empty?
+              Log.log_err("stderr=#{stderr}")
+            end
             Log.log_err("This \"#{directory}\" directory cannot be created.")
           else
-            Log.log_debug("stdout=#{stdout}")
+            if !stdout.nil? && !stdout.strip.empty?
+              Log.log_debug("stdout=#{stdout}")
+            end
+
             returned = 0
           end
         else
@@ -179,15 +189,23 @@ lppsource does not exist as simple NIM resource.")
         # suppress empty lines, commented lines, and 2 first lines
         stdout, stderr, status = Open3.capture3("#{cmd} | /bin/egrep -v '=====|Fileset Name|#|^$' | /bin/awk '{print $1}'")
         Log.log_debug("cmd   =#{cmd}")
-        Log.log_debug("status=#{status}")
+        if !status.nil?
+          Log.log_debug("status=#{status}")
+        end
         returned = ''
         if status.success?
-          Log.log_debug("stdout=#{stdout}")
+          if !stdout.nil? && !stdout.strip.empty?
+            Log.log_debug("stdout=#{stdout}")
+          end
+
           # items = []
           items = stdout.split("\n")
           returned = string_separated(items, ' ')
         else
-          Log.log_err("stderr=#{stderr}")
+          if !stderr.nil? && !stderr.strip.empty?
+            Log.log_err("stderr=#{stderr}")
+          end
+
         end
         Log.log_debug('Ending get_filesets_of_lppsource ' + returned)
         returned
@@ -210,13 +228,19 @@ lppsource does not exist as simple NIM resource.")
           cmd = "/bin/echo \"#{remote_output[0]}\" | /bin/awk '{print $1}' | /bin/sort -u"
           stdout, stderr, status = Open3.capture3(cmd)
           Log.log_debug("cmd   =#{cmd}")
-          Log.log_debug("status=#{status}")
+          if !status.nil?
+            Log.log_debug("status=#{status}")
+          end
           if status.success?
-            Log.log_debug("stdout=#{stdout}")
+            if !stdout.nil? && !stdout.strip.empty?
+              Log.log_debug("stdout=#{stdout}")
+            end
             Log.log_debug('Ending get_applied_filesets ' + stdout)
             stdout
           else
-            Log.log_err("stderr=#{stderr}")
+            if !stderr.nil? && !stderr.strip.empty?
+              Log.log_err("stderr=#{stderr}")
+            end
             Log.log_err('Ending get_applied_filesets ' + stderr)
             stderr
           end
@@ -245,14 +269,20 @@ lppsource does not exist as simple NIM resource.")
           # here is the remote command output parsing method
           stdout, stderr, status =
               Open3.capture3("/bin/echo \"#{remote_output[0]}\" | /bin/awk -F ':' '{print $2}' | /bin/sort -u")
-          Log.log_debug("parsing status=#{status}")
+          if !status.nil?
+            Log.log_debug("status=#{status}")
+          end
           if status.success?
-            Log.log_debug("parsing stdout=#{stdout}")
+            if !stdout.nil? && !stdout.strip.empty?
+              Log.log_debug("stdout=#{stdout}")
+            end
             # items = []
             items = stdout.split("\n")
             filesets[0] = string_separated(items, ' ')
           else
-            Log.log_err("parsing stderr=#{stderr}")
+            if !stderr.nil? && !stderr.strip.empty?
+              Log.log_err("stderr=#{stderr}")
+            end
           end
           Log.log_debug('Ending get_applied_filesets2 : ' +
                             status.to_s)
@@ -313,60 +343,81 @@ lppsource does not exist as simple NIM resource.")
       end
 
       # ########################################################################
-      # name : install_flrtvc
-      # param :
-      # return :
-      # description : install flrtvc on target system
+      # name : check_install_flrtvc
+      # param : none
+      # return : 0 if everything is ok,
+      # description : check if /usr/bin/flrtvc.ksh is installed or not and
+      #  install it if necessary
       # ########################################################################
-      def self.install_flrtvc
-        Log.log_debug('Into install_flrtvc')
+      def self.check_install_flrtvc
+        Log.log_debug('Into check_install_flrtvc')
+
+        returned = 0
 
         unless ::File.exist?('/usr/bin/flrtvc.ksh')
+          Log.log_debug('/usr/bin/flrtvc.ksh does not exist')
           unless ::File.exist?('/tmp/FLRTVC-latest.zip')
+            Log.log_debug('/tmp/FLRTVC-latest.zip does not exist')
             ::File.open('/tmp/FLRTVC-latest.zip', 'w') do |f|
               download_expected = open('https://www-304.ibm.com/webapp/set2/sas/f/flrt3/FLRTVC-latest.zip')
               ::IO.copy_stream(download_expected, f)
+              Log.log_debug('downloaded /tmp/FLRTVC-latest.zip')
             end
           end
 
           command = "/bin/which unzip"
           returned = Utils.execute(command)
           if returned != 0
+            Log.log_debug('downloaded /tmp/FLRTVC-latest.zip')
             # missing unzip on system
             # download and install
             unless ::File.exist?('/tmp/unzip-6.0-3.aix6.1.ppc.rpm')
+              Log.log_debug('/tmp/unzip-6.0-3.aix6.1.ppc.rpm does not exist')
               ::File.open('/tmp/unzip-6.0-3.aix6.1.ppc.rpm', 'w') do |f|
                 download_expected = open('https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/RPMS/ppc/unzip/unzip-6.0-3.aix6.1.ppc.rpm')
                 ::IO.copy_stream(download_expected, f)
+                Log.log_debug('downloaded /tmp/unzip-6.0-3.aix6.1.ppc.rpm')
               end
 
               command = "/bin/rpm -i /tmp/unzip-6.0-3.aix6.1.ppc.rpm"
+              Log.log_debug('launching command ' + command)
               returned = Utils.execute(command)
-              Log.log_debug('command '+command+' returns '+ returned)
+              Log.log_debug('command ' + command + ' returns ' + returned.to_s)
+              if returned == 0
+                Log.log_debug('installed unzip-6.0-3.aix6.1.ppc.rpm')
+              end
             end
           end
 
-          command = "/bin/unzip -o /tmp/FLRTVC-latest.zip -d /usr/bin"
-          returned = Utils.execute(command)
-          Log.log_debug('command '+command+' returns '+ returned)
+          if returned == 0
+            command = "/bin/unzip -o /tmp/FLRTVC-latest.zip -d /usr/bin"
+            Log.log_debug('launching command ' + command)
+            returned = Utils.execute(command)
+            Log.log_debug('command ' + command + ' returns ' + returned.to_s)
+            if returned == 0
+              Log.log_debug('installed /usr/bin/flrtvc.ksh')
+            end
+          end
 
-          # set execution mode
-          file '/usr/bin/flrtvc.ksh' do
-            mode '0755'
+          if returned == 0
+            # set execution mode
+            File.new('/usr/bin/flrtvc.ksh').chmod(0755)
+            Log.log_debug('set execution mode on /usr/bin/flrtvc.ksh')
           end
         end
-        Log.log_debug('Finish install_flrtvc')
+        Log.log_debug('Finish check_install_flrtvc')
+        returned
       end
 
 
       # ########################################################################
       # name : status
       # param : in:target:string
-      # return : hash containing oslevel and ifix
+      # return : hash containing oslevel and lslpp -e
       # description : status a target
       # ########################################################################
       def self.status(target)
-        Log.log_debug('Into status for '+ target)
+        Log.log_debug('Into status for ' + target)
 
         status_output = {}
         remote_cmd1 = '/bin/oslevel -s'
