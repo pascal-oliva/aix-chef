@@ -1,5 +1,3 @@
-require_relative './Utils.rb'
-
 module Automation
   module Lib
     # ########################################################################
@@ -123,11 +121,11 @@ do |_stdin, stdout, stderr, wait_thr|
           end
           stdout.each_line do |line|
             line.chomp!
-             Log.log_debug("\033[2K\r#{line}") if line =~ /^Processing Efix Package [0-9]+ of [0-9]+.$/
-             Log.log_debug("\n#{line}") if line =~ /^EPKG NUMBER/
-             Log.log_debug("\n#{line}") if line =~ /^===========/
-             Log.log_debug("\033[0;31m#{line}\033[0m") if line =~ /INSTALL.*?FAILURE/
-             Log.log_debug("\033[0;32m#{line}\033[0m") if line =~ /INSTALL.*?SUCCESS/
+            Log.log_debug("\033[2K\r#{line}") if line =~ /^Processing Efix Package [0-9]+ of [0-9]+.$/
+            Log.log_debug("\n#{line}") if line =~ /^EPKG NUMBER/
+            Log.log_debug("\n#{line}") if line =~ /^===========/
+            Log.log_debug("\033[0;31m#{line}\033[0m") if line =~ /INSTALL.*?FAILURE/
+            Log.log_debug("\033[0;32m#{line}\033[0m") if line =~ /INSTALL.*?SUCCESS/
           end
           stderr.each_line do |line|
             line.chomp!
@@ -192,10 +190,8 @@ target + ' lpp_source=' + lpp_source)
             else
               Log.log_debug("No ifixes to remove on #{target}.")
             end
-          else
-            if !stderr.nil? && !stderr.strip.empty?
+          elsif !stderr.nil? && !stderr.strip.empty?
               Log.log_err("stderr=#{stderr}")
-            end
           end
         else
           Log.log_debug("No ifixes to remove on #{target}.")

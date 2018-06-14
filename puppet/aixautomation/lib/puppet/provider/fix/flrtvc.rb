@@ -33,7 +33,7 @@ if resource[:ensure].to_s == 'present' || resource[:to_step].to_s == 'status'
 
   # ###########################################################################
   #
-  #
+  # rubocop:disable Metrics/BlockNesting
   # ###########################################################################
   def create
     Log.log_info("Provider flrtvc create : doing up \
@@ -49,7 +49,6 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     targets_array = targets_str.split(',')
 
     targets_array.each do |target|
-
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
       @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeInstall.yml')
@@ -166,7 +165,7 @@ directory=\"#{resource[:root]}\"")
 
       step = :removeFixes
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      flrtvc_report = @flrtvc.run_step(step, target)
+      @flrtvc.run_step(step, target)
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
       #

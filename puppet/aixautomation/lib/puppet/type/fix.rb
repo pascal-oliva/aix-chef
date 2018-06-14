@@ -1,4 +1,3 @@
-require_relative '../../puppet_x/Automation/Lib/Log.rb'
 require_relative '../../puppet_x/Automation/Lib/Utils.rb'
 require_relative '../../puppet_x/Automation/Lib/Flrtvc.rb'
 
@@ -94,18 +93,16 @@ Puppet::Type.newtype(:fix) do
   validate do
     # NEEDS TO BE TESTED AGAIN
     # what is done here : if targets==null then failure
-    raise('"targets" needs to be set') if self[:targets].nil? ||
-        self[:targets].empty?
+    raise('"targets" needs to be set') \
+ if self[:targets].nil? || self[:targets].empty?
 
     # what is done here : if ensure==present and root==null then failure
     raise('"root" needs to be set if "ensure=>present"') \
-      if self[:ensure] == 'present' &&
-         (self[:root].nil? || self[:root].empty?)
+      if self[:ensure] == 'present' && (self[:root].nil? || self[:root].empty?)
 
     # what is done here : if ensure=absent and clean==yes and root==null then failure
     raise('"root" needs to be set if "ensure=>absent" and "clean=>yes"') \
-      if self[:ensure] == 'absent' &&
-         self[:clean] == 'yes' &&
+      if self[:ensure] == 'absent' && self[:clean] == 'yes' &&
         (self[:root].nil? || self[:root].empty?)
   end
 end

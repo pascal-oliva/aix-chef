@@ -1,4 +1,3 @@
-require_relative './Log.rb'
 require_relative './Remote/c_rsh.rb'
 require 'open3'
 
@@ -333,8 +332,7 @@ module Automation
           returned_string_separated = if returned_string_separated.empty?
                                         item
                                       else
-                                        returned_string_separated +
-                                            separator + item
+                                        returned_string_separated + separator + item
                                       end
         end
         # Log.log_debug("Ending string_separated : " +
@@ -365,7 +363,7 @@ module Automation
             end
           end
 
-          command = "/bin/which unzip"
+          command = '/bin/which unzip'
           returned = Utils.execute(command)
           if returned != 0
             Log.log_debug('downloaded /tmp/FLRTVC-latest.zip')
@@ -379,7 +377,7 @@ module Automation
                 Log.log_debug('downloaded /tmp/unzip-6.0-3.aix6.1.ppc.rpm')
               end
 
-              command = "/bin/rpm -i /tmp/unzip-6.0-3.aix6.1.ppc.rpm"
+              command = '/bin/rpm -i /tmp/unzip-6.0-3.aix6.1.ppc.rpm'
               Log.log_debug('launching command ' + command)
               returned = Utils.execute(command)
               Log.log_debug('command ' + command + ' returns ' + returned.to_s)
@@ -390,7 +388,7 @@ module Automation
           end
 
           if returned == 0
-            command = "/bin/unzip -o /tmp/FLRTVC-latest.zip -d /usr/bin"
+            command = '/bin/unzip -o /tmp/FLRTVC-latest.zip -d /usr/bin'
             Log.log_debug('launching command ' + command)
             returned = Utils.execute(command)
             Log.log_debug('command ' + command + ' returns ' + returned.to_s)
@@ -438,4 +436,3 @@ module Automation
     end
   end
 end
-

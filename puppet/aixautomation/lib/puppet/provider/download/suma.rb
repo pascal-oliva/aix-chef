@@ -67,7 +67,6 @@ lpp_source=\"#{resource[:lpp_source]}\".")
 
     Log.log_info('dir_metadata=' + @suma.dir_metadata)
     Log.log_info('dir_lpp_sources=' + @suma.dir_lpp_sources)
-    #Log.log_info("to_step=#{@suma.to_step}")
     Log.log_info('lpp_source=' + @suma.lpp_source)
 
     Log.log_debug('suma.preview')
@@ -84,7 +83,7 @@ lpp_source=\"#{resource[:lpp_source]}\".")
       end
     end
 
-    if !missing or downloaded == 0
+    if !missing || downloaded == 0
       Log.log_debug('Nim.define_lpp_source')
       Nim.define_lpp_source(@suma.lpp_source,
                             @suma.dir_lpp_sources,

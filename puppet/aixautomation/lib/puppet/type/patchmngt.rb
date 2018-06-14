@@ -96,9 +96,8 @@ or "reject", or "commit"". Useful only for "action=update"'
   validate do
     if ((self[:action] == :install) ||
         ((self[:action] == :update) &&
-            ((self[:mode] == :update) ||
-                (self[:mode] == :apply)))) &&
-        (self[:lpp_source].nil?)
+            ((self[:mode] == :update) || (self[:mode] == :apply)))) &&
+        self[:lpp_source].nil?
       raise('"lpp_source" parameter: required when action is "install" or \
 when action is "update"" and mode is "update" or "apply"')
     end

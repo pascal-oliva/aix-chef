@@ -243,7 +243,7 @@
  Refer to TODO.md<br>
 
 ## Release Notes/Contributors/Etc. **Optional**
- ###Last changes documented
+ ### Last changes documented
  #### 0.5.1:
    - fix the automatic installation of "/usr/bin/flrtvc.ksh" if this file is missing 
    - renaming of "./output/facter/sp_per_tl.yml" file to "./output/facter/sp_per_tl.yml.June_2018", 
@@ -270,7 +270,14 @@
     are identified as being in failure, and are listed at the end of download phase. If you run
     flrtvc a second time, after a fist time which had download failures, only failed urls
     downloads are attempted.<br>
-    
+ #### 0.5.5:
+   - Rubocop warnings removal 
+   
+ ### Debugguing tips
+ If ever you have in your environment this variable set : 'ENV=//.kshrc', this can lead to abnormal 
+ behaviour, not well explained. In that case, perform 'unset ENV' before retrying.
+ 
+      
        
     
      

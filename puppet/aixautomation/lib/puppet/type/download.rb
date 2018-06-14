@@ -86,7 +86,6 @@ name of the lpp_source built, by default "PAA_<type>_<from>_<to>"'
     newvalues(:preview, :download)
   end
 
-
   # ############################################################################
   # :clean parameter to
   #
@@ -105,7 +104,6 @@ name of the lpp_source built, by default "PAA_<type>_<from>_<to>"'
     root_directory = ::File.join(Constants.output_dir,
                                  'facter')
     yml_file = ::File.join(root_directory,
-                           'suma',
                            'sp_per_tl.yml')
     # validate directories
     dir_metadata = ::File.join(self[:root], 'metadata', self[:from])

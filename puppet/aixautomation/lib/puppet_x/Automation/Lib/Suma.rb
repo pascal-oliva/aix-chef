@@ -1,7 +1,3 @@
-require_relative './Constants.rb'
-require_relative './Log.rb'
-require_relative './Utils.rb'
-require_relative './SpLevel.rb'
 require 'yaml'
 
 module Automation
@@ -59,8 +55,8 @@ module Automation
       # ######################################################################
       def initialize(args)
         if args.size < 6
-          raise("Suma constructor needs at least 7 parameters in its 'args' \
-parameter. Cannot continue!")
+          raise('Suma constructor needs at least 7 parameters in its "args" \
+parameter. Cannot continue!')
         end
 
         root = args[0]
@@ -78,7 +74,7 @@ parameter. Cannot continue!")
                                   root)
                     end
         @to_step = to_step.to_s
-        #Log.log_debug("to_step=>#{to_step}")
+        # Log.log_debug("to_step=>#{to_step}")
         @dir_metadata = ::File.join(@root_dir,
                                     'metadata',
                                     from_level)
@@ -90,7 +86,7 @@ parameter. Cannot continue!")
         rq_type = ' -a RqType=' + type.to_s
         rq_name = ' '
 
-        @display_metadata = " -a DisplayName=\"Downloading metadata into '" +@dir_metadata.to_s+"\""
+        @display_metadata = ' -a DisplayName="Downloading metadata into ' + @dir_metadata.to_s + '"'
         if to_level != ''
           rq_name = ' -a RqName=' + to_level
           @dir_lpp_sources = ::File.join(@root_dir,
@@ -98,7 +94,7 @@ parameter. Cannot continue!")
                                          type.to_s,
                                          from_level,
                                          to_level)
-          @display_lpp_sources = " -a DisplayName=\"Downloading lppsources into '" +@dir_lpp_sources.to_s+ "\""
+          @display_lpp_sources = ' -a DisplayName="Downloading lppsources into ' + @dir_lpp_sources.to_s + '"'
           @lpp_source = if lpp_source.nil? || lpp_source.empty?
                           'PAA_' + type.to_s + '_' + from_level + '_' +
                               to_level
@@ -111,7 +107,7 @@ parameter. Cannot continue!")
                                          'lpp_sources',
                                          type.to_s,
                                          from_level)
-          @display_lpp_sources = " -a DisplayName=\"Downloading lppsources into '" +@dir_lpp_sources.to_s+ "\""
+          @display_lpp_sources = ' -a DisplayName="Downloading lppsources into ' + @dir_lpp_sources.to_s + '"'
           @lpp_source = if lpp_source.nil? || lpp_source.empty?
                           'PAA_' + type.to_s + '_' + from_level
                         else
@@ -163,7 +159,7 @@ parameter. Cannot continue!")
             Log.log_err(line)
             Log.log_err(line.chomp.to_s)
           end
-        rescue Exception => e
+        rescue StandardError => e
           Log.log_err('e=' + e.to_s) unless e.nil?
           returned = false
           unless exit_status.success?

@@ -6,8 +6,6 @@ require 'net/https'
 require 'net/ftp'
 require 'csv'
 require 'open3'
-require_relative './Utils.rb'
-require_relative './Nim.rb'
 require_relative './Remote/c_rsh.rb'
 
 module Automation
@@ -18,6 +16,7 @@ module Automation
     class Flrtvc
       attr_reader :root # String
       attr_reader :targets # String,
+
 
       # ########################################################################
       # name : initialize
@@ -46,7 +45,7 @@ module Automation
         if args.size > 1
           if !args[1].nil? && !args[1].empty?
             root = args[1]
-            @root_dir = if root =~ /^\//
+            @root_dir = if root =~ %r{/^\//}
                           root
                         else
                           Dir.pwd + '/' + root
@@ -73,12 +72,8 @@ module Automation
         end
 
         #
-        Log.log_info('Flrtvc constructor ' +
-                         '@targets=' + @targets.to_s +
-                         ' @root=' + @root.to_s +
-                         ' @step=' + @step.to_s +
-                         ' @level=' + @level.to_s +
-                         ' @clean=' + @clean.to_s)
+        Log.log_info("#{'Flrtvc constructor @targets='}#{@targets.to_s} \
+@root=#{@root.to_s} @step=#{@step.to_s} @level=#{@level.to_s} @clean=#{@clean.to_s}")
 
         #
         # to keep in memory the already parsed fixes
@@ -94,6 +89,7 @@ module Automation
         @listoffixes_per_url = {}
       end
 
+
       # ########################################################################
       # name : check_flrtvc
       # param :
@@ -103,6 +99,7 @@ module Automation
       def check_flrtvc
         raise FlrtvcNotFound unless ::File.exist?('/usr/bin/flrtvc.ksh')
       end
+
 
       # ########################################################################
       # name : get_flrtvc_name
@@ -131,77 +128,78 @@ module Automation
       def get_flrtvc_name(type, target = '', name_suffix = '')
         returned = ''
         case type
-          when :temp_dir
-            returned = ::File.join(@root_dir,
-                                   'temp')
-            # check it exist
-            Automation::Lib::Utils.check_directory(returned)
-            # clean it
-            FileUtils.rm_rf Dir.glob("#{returned}/*")
-            returned
-          when :tar_dir
-            returned = ::File.join(@root_dir,
-                                   'tar_dir')
-            # check it exist
-            Automation::Lib::Utils.check_directory(returned)
-            returned
-          when :tempftp_download
-            returned = ::File.join(@root_dir,
-                                   'tempftp_download')
-            # check it exist
-            Automation::Lib::Utils.check_directory(returned)
-            returned
-          when :common_efixes
-            returned = ::File.join(@root_dir,
-                                   'common_efixes')
-            Automation::Lib::Utils.check_directory(returned)
-            returned
-          when :efixes
-            returned = ::File.join(@root_dir,
-                                   'efixes',
-                                   "#{target}_#{name_suffix}")
-            Automation::Lib::Utils.check_directory(returned)
-            returned
-          when :emgr
-            returned = ::File.join(@root_dir,
-                                   "#{target}_emgr.txt")
-          when :filesets
-            returned = ::File.join(@root_dir,
-                                   "#{target}_filesets.txt")
-          when :flrtvc
-            returned = ::File.join(@root_dir,
-                                   "#{target}_flrtvc.csv")
-          when :lslpp
-            returned = ::File.join(@root_dir,
-                                   "#{target}_lslpp.txt")
-          when :NIM_dir
-            returned = ::File.join(@root_dir,
-                                   "#{target}_NIM",
-                                   'emgr',
-                                   'ppc')
-            Automation::Lib::Utils.check_directory(returned)
-            returned
-          when :NIM_res
-            returned = "PAA_FLRTVC_#{target}"
-          when :URL
-            returned = ::File.join(@root_dir,
-                                   "#{target}_URL.txt")
-          when :YML
-            if name_suffix == 'lppminmax_of_fixes'
-              returned = ::File.join(@root_dir,
-                                     'common_efixes',
-                                     "#{target}_#{name_suffix}.yml")
-            else
-              returned = ::File.join(@root_dir,
-                                     "#{target}_#{name_suffix}.yml")
-            end
-            returned
-          else
-            returned = ::File.join(@root_dir,
-                                   type + "_#{target}.txt")
+        when :temp_dir
+          returned = ::File.join(@root_dir,
+                                 'temp')
+          # check it exist
+          Automation::Lib::Utils.check_directory(returned)
+          # clean it
+          FileUtils.rm_rf Dir.glob("#{returned}/*")
+          returned
+        when :tar_dir
+          returned = ::File.join(@root_dir,
+                                 'tar_dir')
+          # check it exist
+          Automation::Lib::Utils.check_directory(returned)
+          returned
+        when :tempftp_download
+          returned = ::File.join(@root_dir,
+                                 'tempftp_download')
+          # check it exist
+          Automation::Lib::Utils.check_directory(returned)
+          returned
+        when :common_efixes
+          returned = ::File.join(@root_dir,
+                                 'common_efixes')
+          Automation::Lib::Utils.check_directory(returned)
+          returned
+        when :efixes
+          returned = ::File.join(@root_dir,
+                                 'efixes',
+                                 "#{target}_#{name_suffix}")
+          Automation::Lib::Utils.check_directory(returned)
+          returned
+        when :emgr
+          returned = ::File.join(@root_dir,
+                                 "#{target}_emgr.txt")
+        when :filesets
+          returned = ::File.join(@root_dir,
+                                 "#{target}_filesets.txt")
+        when :flrtvc
+          returned = ::File.join(@root_dir,
+                                 "#{target}_flrtvc.csv")
+        when :lslpp
+          returned = ::File.join(@root_dir,
+                                 "#{target}_lslpp.txt")
+        when :NIM_dir
+          returned = ::File.join(@root_dir,
+                                 "#{target}_NIM",
+                                 'emgr',
+                                 'ppc')
+          Automation::Lib::Utils.check_directory(returned)
+          returned
+        when :NIM_res
+          returned = "PAA_FLRTVC_#{target}"
+        when :URL
+          returned = ::File.join(@root_dir,
+                                 "#{target}_URL.txt")
+        when :YML
+          returned = if name_suffix == 'lppminmax_of_fixes'
+                       ::File.join(@root_dir,
+                                   'common_efixes',
+                                   "#{target}_#{name_suffix}.yml")
+                     else
+                       ::File.join(@root_dir,
+                                   "#{target}_#{name_suffix}.yml")
+                     end
+          returned
+        else
+          returned = ::File.join(@root_dir,
+                                 type + "_#{target}.txt")
         end
         returned
       end
+
 
       # ########################################################################
       # name : mine_this_step
@@ -249,6 +247,7 @@ module Automation
         returned
       end
 
+
       # ########################################################################
       # name : run_step
       # param : input:step:string current step being done, to log it
@@ -263,29 +262,30 @@ module Automation
         Log.log_debug('Into run_step(' + step.to_s + ', ' +
                           target + ', ' + param.to_s + ')')
         case step
-          when :status
-            returned = step_status(step, target, param)
-          when :installFlrtvc
-            returned = step_install_flrtvc(step)
-          when :runFlrtvc
-            returned = step_run_flrtvc(step, target)
-          when :parseFlrtvc
-            returned = step_parse_flrtvc(step, target, param)
-          when :downloadFixes
-            returned = step_perform_downloads(step, target, param)
-          when :checkFixes
-            returned = step_check_fixes(step, target, param)
-          when :buildResource
-            returned = step_build_nim_resource(step, target, param)
-          when :installFixes
-            returned = step_install_fixes(step, target, param)
-          when :removeFixes
-            returned = step_remove_fixes(step, target)
-          else
-            Log.log_err('Unknown step ' + step.to_s)
+        when :status
+          returned = step_status(step, target, param)
+        when :installFlrtvc
+          returned = step_install_flrtvc(step)
+        when :runFlrtvc
+          returned = step_run_flrtvc(step, target)
+        when :parseFlrtvc
+          returned = step_parse_flrtvc(step, target, param)
+        when :downloadFixes
+          returned = step_perform_downloads(step, target, param)
+        when :checkFixes
+          returned = step_check_fixes(step, target, param)
+        when :buildResource
+          returned = step_build_nim_resource(step, target, param)
+        when :installFixes
+          returned = step_install_fixes(step, target, param)
+        when :removeFixes
+          returned = step_remove_fixes(step, target)
+        else
+          Log.log_err('Unknown step ' + step.to_s)
         end
         returned
       end
+
 
       # ########################################################################
       # name : step_status
@@ -300,12 +300,12 @@ module Automation
       # ########################################################################
       def step_status(step, target, yaml_file_name = '')
         Log.log_debug('Into step ' + step.to_s + ' target=' + target)
-        #status_output = {}
+        # status_output = {}
         status_output = Utils.status(target)
         Log.log_debug('status output=' + status_output.to_s)
         Log.log_debug('yaml_file_name=' + yaml_file_name.to_s)
         if !status_output.nil? && !status_output.empty?  \
-                    && !yaml_file_name.nil? && !yaml_file_name.empty?
+                        && !yaml_file_name.nil? && !yaml_file_name.empty?
           # Persist to yml
           status_yml_file = ::File.join(Constants.output_dir,
                                         'logs',
@@ -326,6 +326,7 @@ module Automation
         Log.log_debug('Into step ' + step.to_s)
         Utils.check_install_flrtvc
       end
+
 
       # ########################################################################
       # name : step_run_flrtvc
@@ -386,13 +387,13 @@ module Automation
             end
           end
 
-          if @level != :all
-            cmd = "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file} \
--t #{@level}" # {apar_s} #{filesets_s} #{csv_s}
-          else
-            cmd = "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file}" \
-# {apar_s} #{filesets_s} #{csv_s}
-          end
+          cmd = if @level != :all
+                  "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file} \
+      -t #{@level}" # {apar_s} {filesets_s} {csv_s}
+                else
+                  "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file}" \
+                  # {apar_s} {filesets_s} {csv_s}
+                end
 
           flrtvc_command_output = []
           Utils.execute2(cmd, flrtvc_command_output)
@@ -410,6 +411,7 @@ module Automation
         end
         flrtvc_output
       end
+
 
       # ########################################################################
       # name : step_parse_flrtvc
@@ -451,7 +453,7 @@ module Automation
               else
                 Log.log_debug('download_url=' + download_url)
                 if download_url =~ \
-%r{^(http|https|ftp)://(aix.software.ibm.com|public.dhe.ibm.com)/(aix/ifixes/.*?/|aix/efixes/security/.*?.tar)$}
+                   %r{^(http|https|ftp)://(aix.software.ibm.com|public.dhe.ibm.com)/(aix/ifixes/.*?/|aix/efixes/security/.*?.tar)$}
                   download_urls << download_url
                   h_download_urls[download_url] = fileset
                 end
@@ -553,8 +555,6 @@ and #{filesets.size} filesets.")
                                 ' efixes_and_status_of_url=' +
                                 efixes_and_status_of_url.to_s)
               @listoffixes_per_url[url] = efixes_and_status_of_url.keys
-              efixes_and_downloadstatus =
-                  efixes_and_downloadstatus.merge(efixes_and_status_of_url)
             else
               Log.log_debug('Into step_perform_downloads target=' +
                                 target +
@@ -568,19 +568,19 @@ and #{filesets.size} filesets.")
                                 url +
                                 ' efixes_and_status_of_url=' +
                                 efixes_and_status_of_url.to_s)
-              efixes_and_downloadstatus =
-                  efixes_and_downloadstatus.merge(efixes_and_status_of_url)
             end
+            efixes_and_downloadstatus =
+                efixes_and_downloadstatus.merge(efixes_and_status_of_url)
           end
 
           counter = efixes_and_downloadstatus.values.count {|v| v}
           Log.log_debug('Into step_perform_downloads target=' + target +
                             ' efixes_and_downloadstatus=' + efixes_and_downloadstatus.to_s +
                             ' counter=' + counter.to_s)
-          listoffixes_missing = efixes_and_downloadstatus.select {|key, value| value == -1}
+          listoffixes_missing = efixes_and_downloadstatus.select { |_key, value| value == -1 }
           Log.log_err('Into step_perform_downloads target=' + target +
                           ' Error : download issue for =' + listoffixes_missing.to_s)
-          listoffixes_got = efixes_and_downloadstatus.select {|key, value| value != -1}
+          listoffixes_got = efixes_and_downloadstatus.reject { |_key, value| value == -1 }
           Log.log_debug('Into step_perform_downloads target=' + target +
                             ' listoffixes_got=' + listoffixes_got.to_s)
           listoffixes = listoffixes_got.keys
@@ -648,7 +648,6 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_info('Starting with @lppminmax_of_fixes=' + \
  @lppminmax_of_fixes.length.to_s)
           ###
-
 
           Log.log_debug('Into step_check_fixes target=' + target +
                             ' lppminmax_of_fixes=' + @lppminmax_of_fixes.to_s)
@@ -827,6 +826,7 @@ lppminmax_of_fixes_hash.to_s)
         returned
       end
 
+
       # #######################################################################
       # name : step_install_fixes
       # param : input:_step:string current step being done, to log it
@@ -837,7 +837,9 @@ lppminmax_of_fixes_hash.to_s)
       # return : nothing
       # description : performs efix installations for target
       # #######################################################################
-      def step_install_fixes(_step, target, nimres_sortedfixes)
+      def step_install_fixes(_step,
+                             target,
+                             nimres_sortedfixes)
         Log.log_debug('In step_install_fixes target=' + target +
                           '  nimres_sortedfixes=' +
                           nimres_sortedfixes.to_s)
@@ -846,7 +848,7 @@ lppminmax_of_fixes_hash.to_s)
           # efixes are sorted : most recent first
           nim_resource = nimres_sortedfixes.keys[0]
           ifixes = nimres_sortedfixes.values[0]
-          ifixes_string = Utils.string_separated(ifixes, " ")
+          ifixes_string = Utils.string_separated(ifixes, ' ')
 
           # efixes are applied
           Log.log_debug('  performing ifix customization')
@@ -856,6 +858,7 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_err('Exception e=' + e.to_s)
         end
       end
+
 
       # #######################################################################
       # name : remove_nim_resources
@@ -886,6 +889,7 @@ lppminmax_of_fixes_hash.to_s)
         end
       end
 
+
       # #######################################################################
       # name : step_remove_fixes
       # param : input:_step:string current step being done, to log it
@@ -908,6 +912,7 @@ lppminmax_of_fixes_hash.to_s)
         end
       end
 
+
       # #######################################################################
       # name : remove_downloaded
       # return : nothing
@@ -925,6 +930,7 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_err('Exception e=' + e.to_s)
         end
       end
+
 
       # ########################################################################
       # name : download_fct
@@ -970,74 +976,74 @@ lppminmax_of_fixes_hash.to_s)
           # URL ends with /, look into that directory #
           #############################################
           case protocol
-            when 'http', 'https'
-              Log.log_debug('Into download_fct name.empty http/https')
-              begin
-                uri = URI(url_to_download)
-                http = Net::HTTP.new(uri.host, uri.port)
-                http.read_timeout = 10
-                http.open_timeout = 10
-                http.use_ssl = true if protocol.eql?('https')
-                http.verify_mode = OpenSSL::SSL::VERIFY_NONE if protocol.eql?('https')
-                request = Net::HTTP::Get.new(uri.request_uri)
-                response = http.request(request)
-                subcount = 0
-                if response.is_a?(Net::HTTPResponse)
-                  b_download = 0
-                  response.body.each_line do |response_line|
-                    next unless response_line =~ %r{<a href="(.*?.epkg.Z)">(.*?.epkg.Z)</a>}
-                    url_of_file_to_download = ::File.join(url_to_download, Regexp.last_match(1))
-                    local_path_of_file_to_download =
-                        ::File.join(common_efixes_dirname, Regexp.last_match(1))
-                    Log.log_debug(' consider downloading ' +
-                                      url_of_file_to_download +
-                                      ' into ' +
-                                      common_efixes_dirname +
-                                      " : #{count}/#{total} fixes.")
-                    if !::File.exist?(local_path_of_file_to_download)
-                      # Download file
-                      Log.log_debug("  downloading #{url_of_file_to_download} into #{common_efixes_dirname} and kept into\
-                                    #{local_path_of_file_to_download}: #{count}/#{total} fixes.")
-                      b_download = download(target,
-                                            url_of_file_to_download,
-                                            local_path_of_file_to_download,
-                                            protocol)
-                    else
-                      Log.log_debug("  not downloading #{url_of_file_to_download} into #{common_efixes_dirname} and kept into\
-                                    #{local_path_of_file_to_download}: #{count}/#{total} fixes.")
-                      b_download = 0
-                    end
-                    downloaded_filenames[::File.basename(local_path_of_file_to_download)] = b_download
-                    subcount += 1
+          when 'http', 'https'
+            Log.log_debug('Into download_fct name.empty http/https')
+            begin
+              uri = URI(url_to_download)
+              http = Net::HTTP.new(uri.host, uri.port)
+              http.read_timeout = 10
+              http.open_timeout = 10
+              http.use_ssl = true if protocol.eql?('https')
+              http.verify_mode = OpenSSL::SSL::VERIFY_NONE if protocol.eql?('https')
+              request = Net::HTTP::Get.new(uri.request_uri)
+              response = http.request(request)
+              subcount = 0
+              if response.is_a?(Net::HTTPResponse)
+                b_download = 0
+                response.body.each_line do |response_line|
+                  next unless response_line =~ %r{<a href="(.*?.epkg.Z)">(.*?.epkg.Z)</a>}
+                  url_of_file_to_download = ::File.join(url_to_download, Regexp.last_match(1))
+                  local_path_of_file_to_download =
+                      ::File.join(common_efixes_dirname, Regexp.last_match(1))
+                  Log.log_debug(' consider downloading ' +
+                                    url_of_file_to_download +
+                                    ' into ' +
+                                    common_efixes_dirname +
+                                    " : #{count}/#{total} fixes.")
+                  if !::File.exist?(local_path_of_file_to_download)
+                    # Download file
+                    Log.log_debug("  downloading #{url_of_file_to_download} into #{common_efixes_dirname} and kept into\
+                                  #{local_path_of_file_to_download}: #{count}/#{total} fixes.")
+                    b_download = download(target,
+                                          url_of_file_to_download,
+                                          local_path_of_file_to_download,
+                                          protocol)
+                  else
+                    Log.log_debug("  not downloading #{url_of_file_to_download} into #{common_efixes_dirname} and kept into\
+                                  #{local_path_of_file_to_download}: #{count}/#{total} fixes.")
+                    b_download = 0
                   end
-                  Log.log_debug('Into download_fct for target=' +
-                                    target +
-                                    ' http/https url_to_download=' +
-                                    url_to_download +
-                                    ', subcount=' +
-                                    subcount.to_s)
+                  downloaded_filenames[::File.basename(local_path_of_file_to_download)] = b_download
+                  subcount += 1
                 end
-              rescue StandardError => std_error
-                log "error sending event to server: #{std_error}"
-                raise "standard error"
-              rescue Timeout::Error => error
-                log "timeout sending event to server: #{error}"
-                raise "timeout error"
+                Log.log_debug('Into download_fct for target=' +
+                                  target +
+                                  ' http/https url_to_download=' +
+                                  url_to_download +
+                                  ', subcount=' +
+                                  subcount.to_s)
               end
-            when 'ftp'
-              # NEED TO BE TESTED AGAIN
-              Log.log_debug('Into download_fct name.empty ftp')
-              ftp_download_result = ftp_download(target,
-                                                 url_to_download,
-                                                 count,
-                                                 total,
-                                                 srv,
-                                                 dir,
-                                                 common_efixes_dirname)
-              Log.log_debug('After download_fct name.empty ftp')
-              downloaded_filenames.merge(ftp_download_result)
-            else
-              raise "protocol must be either 'http', 'https', ftp'"
+            rescue StandardError => std_error
+              log "error sending event to server: #{std_error}"
+              raise 'standard error'
+            rescue Timeout::Error => error
+              log "timeout sending event to server: #{error}"
+              raise 'timeout error'
+            end
+          when 'ftp'
+            # NEED TO BE TESTED AGAIN
+            Log.log_debug('Into download_fct name.empty ftp')
+            ftp_download_result = ftp_download(target,
+                                               url_to_download,
+                                               count,
+                                               total,
+                                               srv,
+                                               dir,
+                                               common_efixes_dirname)
+            Log.log_debug('After download_fct name.empty ftp')
+            downloaded_filenames.merge(ftp_download_result)
+          else
+            raise "protocol must be either 'http', 'https', ftp'"
           end
 
         elsif name.end_with?('.tar')
@@ -1101,7 +1107,6 @@ into #{tar_dir}: #{count}/#{total} fixes.")
             tarfiles.each {|x| downloaded_filenames[::File.basename(x)] = 0}
           end
 
-
         elsif name.end_with?('.epkg.Z')
           Log.log_debug('Into download_fct for target=' +
                             target +
@@ -1132,14 +1137,14 @@ into #{local_path_of_file_to_download} \
 : #{count}/#{total} fixes.")
             b_download = 0
           end
-          downloaded_filenames[::File.basename(local_path_of_file_to_download)] =
-              b_download
+          downloaded_filenames[::File.basename(local_path_of_file_to_download)] = b_download
         end
 
         Log.log_info('Into download_fct returning ' +
                          downloaded_filenames.to_s)
         downloaded_filenames
       end
+
 
       # ########################################################################
       # name : download
@@ -1192,16 +1197,17 @@ as Exception e=' + e.to_s)
           Log.log_warning('Timeout while downloading: ' + download_url)
           Log.log_err('Exception e=' + e.to_s + ' : file ' + download_url + ' not downloaded')
           returned = -1
-            # TODO implement timeout on ftp download here, and a retry mechanism
+            # TODO: implement timeout on ftp download here, and a retry mechanism
         rescue StandardError => e
           ::File.delete(destination_file)
           Log.log_err('Exception e=' + e.to_s)
-          #Log.log_warning("Propagating exception of type '#{e.class}' when downloading!")
+          # Log.log_warning("Propagating exception of type '#{e.class}' when downloading!")
           returned = -1
         end
         Log.log_debug('  Into download, returning ' + returned.to_s)
         returned
       end
+
 
       # ########################################################################
       # name : download
@@ -1241,15 +1247,15 @@ as Exception e=' + e.to_s)
           files_on_ftp_server = ftp.nlst('*.epkg.Z')
           subcount = 0
 
-          files_on_ftp_server.each do |fileOnFtpServer|
+          files_on_ftp_server.each do |file_on_ftp_server|
             fix_to_download = ::File.join(url_to_download,
-                                          ::File.basename(fileOnFtpServer))
+                                          ::File.basename(file_on_ftp_server))
 
             begin
               # download file
               local_path_of_file_to_download =
                   ::File.join(destination_dir,
-                              ::File.basename(fileOnFtpServer))
+                              ::File.basename(file_on_ftp_server))
               Log.log_debug(' Consider downloading ' +
                                 fix_to_download +
                                 ' into ' +
@@ -1262,7 +1268,7 @@ as Exception e=' + e.to_s)
                                   local_path_of_file_to_download +
                                   " : #{count}.#{subcount}/#{total} fixes.")
 
-                ftp.getbinaryfile(::File.basename(fileOnFtpServer),
+                ftp.getbinaryfile(::File.basename(file_on_ftp_server),
                                   local_path_of_file_to_download)
                 b_download = 1
               else
@@ -1290,7 +1296,7 @@ as Exception e=' + e.to_s)
                                   destination_dir)
             rescue StandardError => e
               Log.log_err('Exception e=' + e.to_s)
-              #Log.log_warning("Propagating exception of type '#{e.class}' when ftp_downloading!")
+              # Log.log_warning("Propagating exception of type '#{e.class}' when ftp_downloading!")
               returned_downloaded_filenames[::File.basename(local_path_of_file_to_download)] = -1
             end
           end
@@ -1329,6 +1335,7 @@ as Exception e=' + e.to_s)
         returned
       end
 
+
       # ########################################################################
       # name : untar
       # param : input:file_to_untar:string
@@ -1360,7 +1367,7 @@ as Exception e=' + e.to_s)
             #   absolute_untarred_file)
             returned << absolute_untarred_file
           end
-        rescue Exception => e
+        rescue StandardError => e
           Log.log_err('Exception e=' + e.to_s)
           if e.message =~ /No space left on device/
             Flrtvc.increase_filesystem(directory_for_untar)
@@ -1379,6 +1386,7 @@ when untarring!")
         Log.log_debug('  Into untar returned=' + returned.to_s)
         returned
       end
+
 
       # #######################################################################
       # name : min_max_level_prereq_of
@@ -1427,6 +1435,7 @@ when untarring!")
         end
       end
 
+
       # #######################################################################
       # name : packaging_date_of
       # param : input:fixfile:string
@@ -1448,28 +1457,28 @@ when untarring!")
           # We match it                                         0   1  2  3  4      5
           if !command_output[0].nil? && !command_output[0].empty?
             output_to_regex = command_output[0].chomp
-            Log.log_debug('output_to_regex=' + output_to_regex + "|")
-            output_to_regex =~ %r{PACKAGING DATE:\s+\w+\s+(\w+)\s+(\d+)\s+(\d+):(\d+):(\d+)\s+\w+\s+(\d+)\s*}
-            #                                               0       1       2     3    4              5
-            hash_months = {"Jan" => "01", "Feb" => "02", "Mar" => "03",
-                           "Apr" => "04", "May" => "05", "Jun" => "06",
-                           "Jul" => "07", "Aug" => "08", "Sep" => "09",
-                           "Oct" => "10", "Nov" => "11", "Dec" => "12"}
+            Log.log_debug('output_to_regex=' + output_to_regex + '|')
+            output_to_regex =~ /PACKAGING DATE:\s+\w+\s+(\w+)\s+(\d+)\s+(\d+):(\d+):(\d+)\s+\w+\s+(\d+)\s*/
+            #                                             0       1       2     3    4              5
+            hash_months = { 'Jan' => '01', 'Feb' => '02', 'Mar' => '03',
+                            'Apr' => '04', 'May' => '05', 'Jun' => '06',
+                            'Jul' => '07', 'Aug' => '08', 'Sep' => '09',
+                            'Oct' => '10', 'Nov' => '11', 'Dec' => '12' }
             #
             month = Regexp.last_match(1)
-            #Log.log_debug('month=' + month.to_s)
+            # Log.log_debug('month=' + month.to_s)
             s_month = hash_months[month.to_s]
-            #Log.log_debug('s_month=' + s_month.to_s)
+            # Log.log_debug('s_month=' + s_month.to_s)
 
             #
             day = Regexp.last_match(2)
-            #Log.log_debug('day=' + day.to_s)
-            if day.to_i <= 9
-              s_day = "0" + day.to_s
-            else
-              s_day = day.to_s
-            end
-            #Log.log_debug('s_day=' + s_day)
+            # Log.log_debug('day=' + day.to_s)
+            s_day = if day.to_i <= 9
+                      '0' + day.to_s
+                    else
+                      day.to_s
+                    end
+            # Log.log_debug('s_day=' + s_day)
 
             #
             hour = Regexp.last_match(3)
@@ -1493,6 +1502,7 @@ when untarring!")
         end
         packaging_date
       end
+
 
       # #######################################################################
       # name : is_level_prereq_ok?
@@ -1559,6 +1569,7 @@ when checking!")
         end
       end
 
+
       # ########################################################################
       # name : increase_filesystem
       # param : input:path:string
@@ -1606,4 +1617,3 @@ when checking!")
     end
   end
 end
-
