@@ -10,7 +10,7 @@ require_relative '../../../puppet_x/Automation/Lib/Log.rb'
 Puppet::Type.type(:patchmngt).provide(:nimpush) do
   include Automation::Lib
 
-  commands :nim => '/usr/sbin/nim'
+  commands nim: '/usr/sbin/nim'
 
   # ###########################################################################
   # exists?
@@ -28,26 +28,17 @@ Puppet::Type.type(:patchmngt).provide(:nimpush) do
 sync=\"#{resource[:sync]}\" mode=\"#{resource[:mode]}\" \
 on \"#{resource[:targets]}\" targets with \"#{resource[:lpp_source]}\" \
 lpp_source.")
-
+    #
     targets = resource[:targets].to_s
+    Log.log_debug('targets=' + targets)
+    @targets_to_apply = []
+    Log.log_debug('targets_to_apply=' + @targets_to_apply.to_s)
+    targets_array = targets.split(' ')
+    Log.log_debug('targets_array=' + targets_array.to_s)
+    #
     lpp_source = resource[:lpp_source].to_s
     action = resource[:action].to_s
     mode = resource[:mode].to_s
-
-    Log.log_debug('targets=' + targets)
-
-    @targets_to_apply = []
-    Log.log_debug('targets_to_apply=' + @targets_to_apply.to_s)
-
-    # Just to verify that the Facter is accessible from here
-    # Log.log_debug("Facter.value(:standalones)=" +
-    #   Facter.value(:standalones).to_s)
-    # Facter.value(:standalones).each do |standalone|
-    #   Log.log_debug("standalone=" + standalone.to_s)
-    # end
-
-    targets_array = targets.split(' ')
-    Log.log_debug('targets_array=' + targets_array.to_s)
 
     case action.to_s
     when 'install', 'update'
@@ -87,7 +78,7 @@ lpp_source.")
       targets_array.each do |target|
         begin
           nim('-o', 'lslpp', '-a', "filesets=\"#{filesets}\"", \
-'-a', 'lslpp_flags=La', target.to_s)
+              '-a', 'lslpp_flags=La', target.to_s)
           if resource[:ensure].to_s == 'present'
             Log.log_debug("All filesets already installed on #{target}")
             # do not change default value
@@ -188,8 +179,8 @@ lpp_source.")
  Doing : \"#{resource[:ensure]}\" for \"#{resource[:action]}\" \
 action on \"#{resource[:targets]}\" targets \
 with \"#{resource[:lpp_source]}\" lpp_source.")
+    #
     action = resource[:action].to_s
-
     sync = resource[:sync].to_s
     sync_option = if sync.to_s == 'no'
                     'async=yes'
@@ -308,6 +299,7 @@ with \"#{resource[:lpp_source]}\" lpp_source.")
     Log.log_info("Provider nimpush destroy. Doing : \"#{resource[:ensure]}\" \
 for \"#{resource[:action]}\" action on \"#{resource[:targets]}\" \
 targets with \"#{resource[:lpp_source]}\" lpp_source.")
+    #
     action = resource[:action].to_s
     sync = resource[:sync].to_s
 

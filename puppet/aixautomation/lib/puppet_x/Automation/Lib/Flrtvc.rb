@@ -7,6 +7,9 @@ require 'net/ftp'
 require 'csv'
 require 'open3'
 require_relative './Remote/c_rsh.rb'
+require_relative './Log.rb'
+require_relative './Nim.rb'
+require_relative './Utils.rb'
 
 module Automation
   module Lib
@@ -16,7 +19,6 @@ module Automation
     class Flrtvc
       attr_reader :root # String
       attr_reader :targets # String,
-
 
       # ########################################################################
       # name : initialize
@@ -40,12 +42,11 @@ module Automation
         else
           @targets = ''
         end
-
         #
         if args.size > 1
           if !args[1].nil? && !args[1].empty?
             root = args[1]
-            @root_dir = if root =~ %r{/^\//}
+            @root_dir = if root =~ %r{^\/}
                           root
                         else
                           Dir.pwd + '/' + root
@@ -56,7 +57,6 @@ module Automation
             @root = ''
           end
         end
-
         #
         if args.size > 4
           step = args[2]
@@ -70,36 +70,61 @@ module Automation
           @level = ''
           @clean = 'yes'
         end
+        #
+        Log.log_info("Flrtvc constructor @targets=#{@targets} \
+@root=#{@root} @step=#{@step} @level=#{@level} @clean=#{@clean}")
 
-        #
-        Log.log_info("#{'Flrtvc constructor @targets='}#{@targets.to_s} \
-@root=#{@root.to_s} @step=#{@step.to_s} @level=#{@level.to_s} @clean=#{@clean.to_s}")
-
-        #
-        # to keep in memory the already parsed fixes
-        # so that they are not parsed again and again
-        #
-        @lppminmax_of_fixes = {}
-
-        #
-        # to keep in memory the list of fixes per url
-        #  so that we can build teh list of fix for each target,
-        #  even if the url has already been downloaded
-        #
-        @listoffixes_per_url = {}
+        if @clean == 'yes'
+          #
+          # to keep in memory the already parsed fixes
+          # so that they are not parsed again and again
+          #
+          @lppminmax_of_fixes = {}
+          #
+          # to keep in memory the list of fixes per url
+          #  so that we can build the list of fix for each target,
+          #  even if the url has already been downloaded
+          #
+          @listoffixes_per_url = {}
+        else
+          #
+          # to keep in memory the already parsed fixes
+          # so that they are not parsed again and again
+          #
+          lppminmax_of_fixes_yml_file = get_flrtvc_name(:YML,
+                                                        'all',
+                                                        'lppminmax_of_fixes')
+          @lppminmax_of_fixes = YAML.load_file(target_yml_file)
+          Log.log_debug('Reading from ' +
+                            lppminmax_of_fixes_yml_file +
+                            ' @lppminmax_of_fixes.length=' +
+                            @lppminmax_of_fixes.length.to_s)
+          #
+          # to keep in memory the list of fixes per url
+          #  so that we can build the list of fix for each target,
+          #  even if the url has already been downloaded
+          #
+          listoffixes_per_url_yml_file = get_flrtvc_name(:YML,
+                                                         'all',
+                                                         'listoffixes_per_url')
+          @listoffixes_per_url = YAML.load_file(target_yml_file)
+          Log.log_debug('Reading from ' +
+                            listoffixes_per_url_yml_file +
+                            ' @listoffixes_per_url.length=' +
+                            @listoffixes_per_url.length.to_s)
+        end
       end
-
 
       # ########################################################################
       # name : check_flrtvc
       # param :
       # return :
-      # description :
+      # description : no need to explain
+      #  but not used
       # ########################################################################
       def check_flrtvc
         raise FlrtvcNotFound unless ::File.exist?('/usr/bin/flrtvc.ksh')
       end
-
 
       # ########################################################################
       # name : get_flrtvc_name
@@ -125,14 +150,16 @@ module Automation
       # description : common function to build full path name according to
       #  specific rules to each type.
       # ########################################################################
-      def get_flrtvc_name(type, target = '', name_suffix = '')
+      def get_flrtvc_name(type,
+                          target = '',
+                          name_suffix = '')
         returned = ''
         case type
         when :temp_dir
           returned = ::File.join(@root_dir,
                                  'temp')
           # check it exist
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           # clean it
           FileUtils.rm_rf Dir.glob("#{returned}/*")
           returned
@@ -140,24 +167,24 @@ module Automation
           returned = ::File.join(@root_dir,
                                  'tar_dir')
           # check it exist
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           returned
         when :tempftp_download
           returned = ::File.join(@root_dir,
                                  'tempftp_download')
           # check it exist
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           returned
         when :common_efixes
           returned = ::File.join(@root_dir,
                                  'common_efixes')
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           returned
         when :efixes
           returned = ::File.join(@root_dir,
                                  'efixes',
                                  "#{target}_#{name_suffix}")
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           returned
         when :emgr
           returned = ::File.join(@root_dir,
@@ -176,7 +203,7 @@ module Automation
                                  "#{target}_NIM",
                                  'emgr',
                                  'ppc')
-          Automation::Lib::Utils.check_directory(returned)
+          Utils.check_directory(returned)
           returned
         when :NIM_res
           returned = "PAA_FLRTVC_#{target}"
@@ -200,7 +227,6 @@ module Automation
         returned
       end
 
-
       # ########################################################################
       # name : mine_this_step
       # param : input:step:string current step being done, to log it
@@ -212,13 +238,13 @@ module Automation
       # description : if true is returned as key, it means that the mining
       #   must be done.
       # ########################################################################
-      def mine_this_step(step, target)
+      def mine_this_step(step,
+                         target)
         Log.log_info(' Into mine_this_step for target=' + target + \
 ' step=' + step.to_s + ' clean=' + @clean.to_s)
         returned = {}
         target_yml_file = get_flrtvc_name(:YML, target, step)
         Log.log_info('target_yml_file=' + target_yml_file)
-
         #
         if @clean == :yes
           begin
@@ -230,7 +256,6 @@ module Automation
         else
           Log.log_info(' Into mine_this_step  keeping ' + target_yml_file)
         end
-
         #
         begin
           yml_output = YAML.load_file(target_yml_file)
@@ -246,7 +271,6 @@ module Automation
         end
         returned
       end
-
 
       # ########################################################################
       # name : run_step
@@ -286,7 +310,6 @@ module Automation
         returned
       end
 
-
       # ########################################################################
       # name : step_status
       # param : input:step:string current step being done, to log it
@@ -298,23 +321,24 @@ module Automation
       # description : please note this step is as well done and
       #  integrated into the 'standalones' factor
       # ########################################################################
-      def step_status(step, target, yaml_file_name = '')
+      def step_status(step,
+                      target,
+                      yaml_file_name = '')
         Log.log_debug('Into step ' + step.to_s + ' target=' + target)
         # status_output = {}
         status_output = Utils.status(target)
         Log.log_debug('status output=' + status_output.to_s)
         Log.log_debug('yaml_file_name=' + yaml_file_name.to_s)
         if !status_output.nil? && !status_output.empty?  \
-                        && !yaml_file_name.nil? && !yaml_file_name.empty?
+                            && !yaml_file_name.nil? && !yaml_file_name.empty?
           # Persist to yml
           status_yml_file = ::File.join(Constants.output_dir,
                                         'logs',
                                         yaml_file_name)
           File.write(status_yml_file, status_output.to_yaml)
-          Log.log_debug('Refer to "' + status_yml_file + '" to have status of "fix" ("flrtvc" provider)')
+          Log.log_info('Refer to "' + status_yml_file + '" to have status of "fix" ("flrtvc" provider)')
         end
       end
-
 
       # ########################################################################
       # name : step_install_flrtvc
@@ -326,7 +350,6 @@ module Automation
         Log.log_debug('Into step ' + step.to_s)
         Utils.check_install_flrtvc
       end
-
 
       # ########################################################################
       # name : step_run_flrtvc
@@ -340,9 +363,9 @@ module Automation
       #   command into yml file particular for this target. If the yml already
       #   exists, take the yml file.
       # ########################################################################
-      def step_run_flrtvc(step, target)
+      def step_run_flrtvc(step,
+                          target)
         Log.log_debug('Into step_run_flrtvc target=' + target)
-
         mine_this_step_hash = mine_this_step(step, target)
         if mine_this_step_hash[false].nil?
           Log.log_info(' Doing mine_this_step for target=' + target +
@@ -359,7 +382,6 @@ module Automation
           #
           flrtvc_file = get_flrtvc_name(:flrtvc, target)
           Log.log_debug('flrtvc_file=' + flrtvc_file)
-
           #
           if target == 'master'
             #
@@ -374,7 +396,7 @@ module Automation
             lslpp_output = ''
             returned = Automation::Lib::Remote.c_rsh(target, cmd1, lslpp_output)
             if returned.success?
-              File.open(lslpp_file, 'w') {|file| file.write(lslpp_output)}
+              File.open(lslpp_file, 'w') { |file| file.write(lslpp_output) }
               Log.log_debug('lslpp_file ' + lslpp_file + ' written')
             end
             #
@@ -382,11 +404,11 @@ module Automation
             emgr_output = ''
             returned = Automation::Lib::Remote.c_rsh(target, cmd2, emgr_output)
             if returned.success?
-              File.open(emgr_file, 'w') {|file| file.write(emgr_output)}
+              File.open(emgr_file, 'w') { |file| file.write(emgr_output) }
               Log.log_debug('emgr_file ' + emgr_file + ' written')
             end
           end
-
+          #
           cmd = if @level != :all
                   "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file} \
       -t #{@level}" # {apar_s} {filesets_s} {csv_s}
@@ -394,24 +416,20 @@ module Automation
                   "/usr/bin/flrtvc.ksh -l #{lslpp_file} -e #{emgr_file}" \
                   # {apar_s} {filesets_s} {csv_s}
                 end
-
+          #
           flrtvc_command_output = []
           Utils.execute2(cmd, flrtvc_command_output)
-
           # persist to yaml
           target_yml_file = get_flrtvc_name(:YML, target, step)
           File.write(target_yml_file, flrtvc_command_output[0].to_yaml)
           flrtvc_output = flrtvc_command_output[0]
-
         else
           Log.log_info(' NOT Doing mine_this_step for target=' + target +
                            ' step=' + step.to_s)
           flrtvc_output = mine_this_step_hash[false]
-
         end
         flrtvc_output
       end
-
 
       # ########################################################################
       # name : step_parse_flrtvc
@@ -424,16 +442,18 @@ module Automation
       #  for this particular target, to retrieve all URLs of fixes,
       #  generates some files to keep information.
       # ########################################################################
-      def step_parse_flrtvc(step, target, flrtvc_report)
+      def step_parse_flrtvc(step,
+                            target,
+                            flrtvc_report)
         Log.log_debug('Into step_parse_flrtvc target=' + target)
-
+        #
         mine_this_step_hash = mine_this_step(step, target)
         if mine_this_step_hash[false].nil?
           Log.log_info(' Doing mine_this_step for target=' + target +
                            ' step=' + step.to_s)
 
           array_of_fixes = CSV.parse(flrtvc_report, headers: true, col_sep: '|')
-
+          #
           # catch all download URLs which are in column with 'Download URL' header
           h_download_urls = {}
           download_urls = []
@@ -443,7 +463,7 @@ module Automation
           array_of_fixes.each do |fix|
             fileset = fix['Fileset']
             filesets << fileset
-
+            #
             download_url = fix['Download URL']
             if !download_url.nil?
               if download_url.eql?('See advisory')
@@ -464,33 +484,31 @@ module Automation
           end
           filesets.uniq!
           filesets.sort!
-
+          #
           Log.log_info('For ' + target + ", we found #{h_download_urls.size} \
 different download links over #{array_of_fixes.size} vulnerabilities \
 and #{filesets.size} filesets.")
-
+          #
           advisory_target_yml_file = get_flrtvc_name(:YML,
                                                      target,
                                                      :AdvisoryFlrtvc)
           File.write(advisory_target_yml_file, advisories.to_yaml)
           Log.log_info('See list of advisories mentionned by flrtvc into ' +
                            advisory_target_yml_file)
-
           advisory_urls_target_yml_file = get_flrtvc_name(:YML,
                                                           target,
                                                           :AdvisoryURLs)
           File.write(advisory_urls_target_yml_file, advisory_urls.to_yaml)
           Log.log_info('See list of advisory URLs mentionned by flrtvc into ' +
                            advisory_urls_target_yml_file)
-
+          #
           download_urls.uniq!
           download_urls.sort!
           download_urls.reverse!
-
+          #
           # persist to yaml
           target_yml_file = get_flrtvc_name(:YML, target, step)
           File.write(target_yml_file, download_urls.to_yaml)
-
         else
           Log.log_info(' NOT Doing mine_this_step for target=' + target +
                            ' step=' + step.to_s)
@@ -499,14 +517,12 @@ and #{filesets.size} filesets.")
         download_urls
       end
 
-
       # ########################################################################
       # name : step_perform_downloads
       # param : input:step:string current step being done, to log it
       # param : input:target:string one particular target
       #   on which action is being done
       # param : input:urls_of_target:urls
-      #
       # return : listofkeptfixes_of_target
       # description :
       #  First download is organized, and shared among all targets
@@ -523,7 +539,7 @@ and #{filesets.size} filesets.")
                                  urls_of_target)
         Log.log_debug('Into step_perform_downloads target=' + target +
                           ' urls_of_target=' + urls_of_target.to_s)
-
+        #
         mine_this_step_hash = mine_this_step(step, target)
         if mine_this_step_hash[false].nil?
           Log.log_info(' Doing mine_this_step for target=' + target +
@@ -533,7 +549,7 @@ and #{filesets.size} filesets.")
           total = urls_of_target.length
           index = 0
           efixes_and_downloadstatus = {}
-
+          #
           urls_of_target.each do |url|
             Log.log_debug('Into step_perform_downloads target=' + target +
                               ' download url=' + url)
@@ -561,7 +577,7 @@ and #{filesets.size} filesets.")
                                 ' download url=' +
                                 url + ' already downloaded.')
               efixes_and_status_of_url = {}
-              listoffixes_already_downloaded.each {|x| efixes_and_status_of_url[x] = false}
+              listoffixes_already_downloaded.each { |x| efixes_and_status_of_url[x] = false }
               Log.log_debug('Into step_perform_downloads target=' +
                                 target +
                                 ' download url=' +
@@ -572,8 +588,18 @@ and #{filesets.size} filesets.")
             efixes_and_downloadstatus =
                 efixes_and_downloadstatus.merge(efixes_and_status_of_url)
           end
+          # persist @listoffixes_per_url
+          listoffixes_per_url_yml_file = get_flrtvc_name(:YML,
+                                                         'all',
+                                                         'listoffixes_per_url')
+          Log.log_debug('Persisting into ' +
+                            listoffixes_per_url_yml_file +
+                            ' @listoffixes_per_url.length=' +
+                            @listoffixes_per_url.length.to_s)
+          File.write(listoffixes_per_url_yml_file, @listoffixes_per_url.to_yaml)
 
-          counter = efixes_and_downloadstatus.values.count {|v| v}
+          #
+          counter = efixes_and_downloadstatus.values.count { |v| v }
           Log.log_debug('Into step_perform_downloads target=' + target +
                             ' efixes_and_downloadstatus=' + efixes_and_downloadstatus.to_s +
                             ' counter=' + counter.to_s)
@@ -586,7 +612,7 @@ and #{filesets.size} filesets.")
           listoffixes = listoffixes_got.keys
           listoffixes.sort!
           listoffixes.reverse!
-
+          #
           # persist to yaml
           target_yml_file = get_flrtvc_name(:YML, target, step)
           File.write(target_yml_file, listoffixes.to_yaml)
@@ -597,7 +623,6 @@ and #{filesets.size} filesets.")
                            step.to_s)
           listoffixes = mine_this_step_hash[false]
         end
-
         Log.log_info(' Into step_perform_downloads target=' +
                          target +
                          ' listoffixes=' + listoffixes.to_s +
@@ -617,25 +642,25 @@ and #{filesets.size} filesets.")
       #  Check of fixes is organized, so that only fixes which can be applied
       #    are kept for each target.
       # ########################################################################
-      def step_check_fixes(step, target, listoffixes)
+      def step_check_fixes(step,
+                           target,
+                           listoffixes)
         Log.log_info(' Into step_check_fixes target=' + target +
                          ' listoffixes=' + listoffixes.to_s)
-
+        #
         mine_this_step_hash = mine_this_step(step, target)
         packaging_date_of_fixes = {}
         if mine_this_step_hash[false].nil?
-
           Log.log_info(' Into step_check_fixes target=' +
                            target +
                            ' checking now prerequisites for this listoffixes')
           # Check level prereq
           common_efixes_dirname = get_flrtvc_name(:common_efixes)
           listofkeptfixes = []
-
+          #
           ifix_ct_for_this_target = 0
           ifix_nb_for_this_target = listoffixes.length
-
-          ###
+          #
           lppminmax_of_fixes_hash = mine_this_step('lppminmax_of_fixes',
                                                    'all')
           Log.log_info('Starting with lppminmax_of_fixes_hash=' + \
@@ -647,8 +672,7 @@ lppminmax_of_fixes_hash.to_s)
                                 end
           Log.log_info('Starting with @lppminmax_of_fixes=' + \
  @lppminmax_of_fixes.length.to_s)
-          ###
-
+          #
           Log.log_debug('Into step_check_fixes target=' + target +
                             ' lppminmax_of_fixes=' + @lppminmax_of_fixes.to_s)
           listoffixes.each do |fix|
@@ -673,7 +697,7 @@ lppminmax_of_fixes_hash.to_s)
               # If found, we take the already found values
               lpps_minmax_of_fix = existing_lppminmax_of_fixes
             end
-
+            #
             # Then we check against the lpp level of this target
             kept_fix_for_this_target = true
             unless lpps_minmax_of_fix.empty?
@@ -691,7 +715,7 @@ lppminmax_of_fixes_hash.to_s)
                 end
               end
             end
-
+            #
             next unless kept_fix_for_this_target
             Log.log_info(' Into step_check_fixes target=' + target +
                              ' fix=' + fix +
@@ -699,21 +723,21 @@ lppminmax_of_fixes_hash.to_s)
                              ifix_nb_for_this_target.to_s + ') can be applied.')
             listofkeptfixes << fix
           end
-
+          #
           Log.log_info(' Into step_check_fixes target=' + target +
                            ' listofkeptfixes=' + listofkeptfixes.to_s +
                            ' (' + listofkeptfixes.length.to_s + ')')
-
+          #
           # persist to yaml the matching between fixes/lpp/min&max
           lppminmax_of_fixes_yml_file = get_flrtvc_name(:YML,
                                                         'all',
                                                         'lppminmax_of_fixes')
           Log.log_debug('Persisting into ' +
-                            @lppminmax_of_fixes.to_yaml +
+                            lppminmax_of_fixes_yml_file +
                             ' @lppminmax_of_fixes.length=' +
                             @lppminmax_of_fixes.length.to_s)
           File.write(lppminmax_of_fixes_yml_file, @lppminmax_of_fixes.to_yaml)
-
+          #
           # Sort the fixes by packaging date
           Log.log_debug('Into step_check_fixes target=' + target +
                             ' Sort the fixes by packaging date')
@@ -722,11 +746,10 @@ lppminmax_of_fixes_hash.to_s)
                                                            fix))
             packaging_date_of_fixes[packaging_date] = fix
           end
-
+          #
           # persist to yaml match between fix and packaging date
           target_yml_file = get_flrtvc_name(:YML, target, step)
           File.write(target_yml_file, packaging_date_of_fixes.to_yaml)
-
         else
           Log.log_info(' NOT Doing mine_this_step for target=' +
                            target +
@@ -734,7 +757,7 @@ lppminmax_of_fixes_hash.to_s)
                            step.to_s)
           packaging_date_of_fixes = mine_this_step_hash[false]
         end
-
+        #
         Log.log_info(' Into step_check_fixes target=' +
                          target +
                          ' packaging_date_of_fixes=' +
@@ -742,7 +765,6 @@ lppminmax_of_fixes_hash.to_s)
                          ' (' + packaging_date_of_fixes.length.to_s + ')')
         packaging_date_of_fixes
       end
-
 
       # #######################################################################
       # name : step_build_nim_resource
@@ -755,29 +777,31 @@ lppminmax_of_fixes_hash.to_s)
       #   by pkgdate as value
       # description : Builds NIM resource and returns its name
       # #######################################################################
-      def step_build_nim_resource(_step, target, hfixes_dates)
+      def step_build_nim_resource(_step,
+                                  target,
+                                  hfixes_dates)
         Log.log_debug('In step_build_nim_resource target=' +
                           target +
                           ' hfixes_dates=' +
                           hfixes_dates.to_s)
-
+        #
         returned = {}
-
+        #
         target_nimresource_dir_name = get_flrtvc_name(:NIM_dir, target)
         Log.log_debug('  target_nimresource_dir_name=' +
                           target_nimresource_dir_name)
-
+        #
         # first sort the hash by their value which is packaging_date
         #  then get only the keys
         packaging_dates_sorted = hfixes_dates.keys.sort
         # reverse
         packaging_dates_sorted.reverse!
-
+        #
         fixes = []
         packaging_dates_sorted.each do |packaging_date|
           fixes << hfixes_dates[packaging_date]
         end
-
+        #
         Log.log_debug('  fixes sorted by packaging date=' +
                           fixes.to_s)
 
@@ -800,7 +824,7 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_debug('  copied ' + fix_filename +
                             ' into ' + target_nimresource_dir_name)
         end
-
+        #
         # return hash with lpp_source as key and sorted ifix as value
         nim_lpp_source_resource = get_flrtvc_name(:NIM_res, target)
         Log.log_debug('  testing if NIM resource ' +
@@ -819,13 +843,12 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_debug('  built NIM resource ' +
                             nim_lpp_source_resource)
         end
-
+        #
         returned[nim_lpp_source_resource] = fixes
         Log.log_debug('In step_build_nim_resource returned=' +
                           returned.to_s)
         returned
       end
-
 
       # #######################################################################
       # name : step_install_fixes
@@ -843,13 +866,13 @@ lppminmax_of_fixes_hash.to_s)
         Log.log_debug('In step_install_fixes target=' + target +
                           '  nimres_sortedfixes=' +
                           nimres_sortedfixes.to_s)
-
+        #
         begin
           # efixes are sorted : most recent first
           nim_resource = nimres_sortedfixes.keys[0]
           ifixes = nimres_sortedfixes.values[0]
           ifixes_string = Utils.string_separated(ifixes, ' ')
-
+          #
           # efixes are applied
           Log.log_debug('  performing ifix customization')
           Nim.perform_efix(target, nim_resource, ifixes_string)
@@ -858,7 +881,6 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_err('Exception e=' + e.to_s)
         end
       end
-
 
       # #######################################################################
       # name : remove_nim_resources
@@ -889,7 +911,6 @@ lppminmax_of_fixes_hash.to_s)
         end
       end
 
-
       # #######################################################################
       # name : step_remove_fixes
       # param : input:_step:string current step being done, to log it
@@ -900,7 +921,8 @@ lppminmax_of_fixes_hash.to_s)
       # This is a convenient method used for tests, when we need to do some
       #  cycles of install efixes/uninstall efixes.
       # #######################################################################
-      def step_remove_fixes(_step, target)
+      def step_remove_fixes(_step,
+                            target)
         Log.log_debug('In step_remove_fixes target=' + target)
         nim_lpp_source_resource = get_flrtvc_name(:NIM_res, target)
         begin
@@ -911,7 +933,6 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_err('Exception e=' + e.to_s)
         end
       end
-
 
       # #######################################################################
       # name : remove_downloaded
@@ -930,7 +951,6 @@ lppminmax_of_fixes_hash.to_s)
           Log.log_err('Exception e=' + e.to_s)
         end
       end
-
 
       # ########################################################################
       # name : download_fct
@@ -965,11 +985,10 @@ lppminmax_of_fixes_hash.to_s)
         unless %r{^(?<protocol>.*?)://(?<srv>.*?)/(?<dir>.*)/(?<name>.*)$} =~ url_to_download
           raise URLNotMatch "link: #{url_to_download}"
         end
-
+        #
         common_efixes_dirname = get_flrtvc_name(:common_efixes)
         temp_dir = get_flrtvc_name(:temp_dir)
         tar_dir = get_flrtvc_name(:tar_dir)
-
         #
         if name.empty?
           #############################################
@@ -1024,10 +1043,10 @@ lppminmax_of_fixes_hash.to_s)
                                   subcount.to_s)
               end
             rescue StandardError => std_error
-              log "error sending event to server: #{std_error}"
+              Log.log_err("error sending event to server: #{std_error}")
               raise 'standard error'
             rescue Timeout::Error => error
-              log "timeout sending event to server: #{error}"
+              Log.log_err("timeout sending event to server: #{error}")
               raise 'timeout error'
             end
           when 'ftp'
@@ -1045,7 +1064,6 @@ lppminmax_of_fixes_hash.to_s)
           else
             raise "protocol must be either 'http', 'https', ftp'"
           end
-
         elsif name.end_with?('.tar')
           Log.log_debug('Into download_fct for target=' +
                             target +
@@ -1070,7 +1088,7 @@ into #{tar_dir}: #{count}/#{total} fixes.")
                                   url_to_download,
                                   local_path_of_file_to_download,
                                   protocol)
-
+            #
             if b_download == 1
               # We untar only if the tar file does not yet exist.
               # We consider that if tar file already exists,
@@ -1079,7 +1097,7 @@ into #{tar_dir}: #{count}/#{total} fixes.")
 into #{temp_dir} : #{count}/#{total} fixes.")
               untarred_files = untar(local_path_of_file_to_download, temp_dir)
               # Log.log_debug("untarred_files = " + untarred_files.to_s)
-
+              #
               subcount = 1
               Log.log_debug('  copying ' + untarred_files.to_s + \
 ' into ' + common_efixes_dirname)
@@ -1094,7 +1112,7 @@ into #{temp_dir} : #{count}/#{total} fixes.")
               Log.log_debug("  not downloading #{url_to_download} \
 into #{tar_dir}: #{count}/#{total} fixes.")
               tarfiles = tar_tf(local_path_of_file_to_download)
-              tarfiles.each {|x| downloaded_filenames[::File.basename(x)] = 0}
+              tarfiles.each { |x| downloaded_filenames[::File.basename(x)] = 0 }
             else
               Log.log_debug("  error while downloading #{url_to_download} \
 into #{tar_dir}: #{count}/#{total} fixes.")
@@ -1104,9 +1122,8 @@ into #{tar_dir}: #{count}/#{total} fixes.")
             Log.log_debug("  already downloaded : not downloading #{url_to_download} \
 into #{tar_dir}: #{count}/#{total} fixes.")
             tarfiles = tar_tf(local_path_of_file_to_download)
-            tarfiles.each {|x| downloaded_filenames[::File.basename(x)] = 0}
+            tarfiles.each { |x| downloaded_filenames[::File.basename(x)] = 0 }
           end
-
         elsif name.end_with?('.epkg.Z')
           Log.log_debug('Into download_fct for target=' +
                             target +
@@ -1139,12 +1156,11 @@ into #{local_path_of_file_to_download} \
           end
           downloaded_filenames[::File.basename(local_path_of_file_to_download)] = b_download
         end
-
+        #
         Log.log_info('Into download_fct returning ' +
                          downloaded_filenames.to_s)
         downloaded_filenames
       end
-
 
       # ########################################################################
       # name : download
@@ -1169,6 +1185,7 @@ into #{local_path_of_file_to_download} \
                           ' download_url=' + download_url +
                           ' destination_file=' + destination_file +
                           ' protocol=' + protocol + ')')
+        #
         returned = 0
         begin
           unless ::File.exist?(destination_file)
@@ -1208,7 +1225,6 @@ as Exception e=' + e.to_s)
         returned
       end
 
-
       # ########################################################################
       # name : download
       # param : input:target:string
@@ -1227,9 +1243,12 @@ as Exception e=' + e.to_s)
       #  A retry mechanism which increases the file system size
       #   in case of ENOSPC
       # ########################################################################
-      def ftp_download(target, url_to_download,
-                       count, total,
-                       ftp_server, ftp_dir,
+      def ftp_download(target,
+                       url_to_download,
+                       count,
+                       total,
+                       ftp_server,
+                       ftp_dir,
                        destination_dir)
         Log.log_debug('  Into download(target=' + target +
                           ' url_to_download=' + url_to_download +
@@ -1246,11 +1265,11 @@ as Exception e=' + e.to_s)
           ftp.chdir(ftp_dir)
           files_on_ftp_server = ftp.nlst('*.epkg.Z')
           subcount = 0
-
+          #
           files_on_ftp_server.each do |file_on_ftp_server|
             fix_to_download = ::File.join(url_to_download,
                                           ::File.basename(file_on_ftp_server))
-
+            #
             begin
               # download file
               local_path_of_file_to_download =
@@ -1261,13 +1280,13 @@ as Exception e=' + e.to_s)
                                 ' into ' +
                                 local_path_of_file_to_download +
                                 " : #{count}.#{subcount}/#{total} fixes.")
-
+              #
               if !::File.exist?(local_path_of_file_to_download)
                 Log.log_debug('  downloading ' + fix_to_download +
                                   'into ' +
                                   local_path_of_file_to_download +
                                   " : #{count}.#{subcount}/#{total} fixes.")
-
+                #
                 ftp.getbinaryfile(::File.basename(file_on_ftp_server),
                                   local_path_of_file_to_download)
                 b_download = 1
@@ -1279,9 +1298,9 @@ as Exception e=' + e.to_s)
                                   " : #{count}.#{subcount}/#{total} fixes.")
                 b_download = 0
               end
-
+              #
               subcount += 1
-
+              #
               returned_downloaded_filenames[::File.basename(local_path_of_file_to_download)] = b_download
             rescue Errno::ENOSPC => e
               Log.log_err('Automatically increasing file system when ftp_downloading as\
@@ -1304,7 +1323,6 @@ as Exception e=' + e.to_s)
         Log.log_debug('returned_downloaded_filenames=' + returned_downloaded_filenames.to_s)
         returned_downloaded_filenames
       end
-
 
       # ########################################################################
       # name : tar_tf
@@ -1335,7 +1353,6 @@ as Exception e=' + e.to_s)
         returned
       end
 
-
       # ########################################################################
       # name : untar
       # param : input:file_to_untar:string
@@ -1343,7 +1360,8 @@ as Exception e=' + e.to_s)
       # return : array of absolute file names which have been untarred.
       # description : performs untar and returns result of untar
       # ########################################################################
-      def untar(file_to_untar, directory_for_untar)
+      def untar(file_to_untar,
+                directory_for_untar)
         Log.log_debug('  Into untar file_to_untar=' + file_to_untar +
                           ' directory_for_untar=' + directory_for_untar)
         returned = []
@@ -1354,17 +1372,15 @@ as Exception e=' + e.to_s)
           untarred_files_array = command_output[0].split("\n")
           untarred_files = Utils.string_separated(untarred_files_array,
                                                   ' ')
-
+          #
           cmd = "/bin/tar -xf #{file_to_untar} \
 -C #{directory_for_untar} #{untarred_files}"
           Utils.execute(cmd)
-
+          #
           untarred_files_array.each do |untarred_file|
             absolute_untarred_file =
                 ::File.join(directory_for_untar,
                             untarred_file)
-            # Log.log_debug("  Into untar absolute_untarred_file=" +
-            #   absolute_untarred_file)
             returned << absolute_untarred_file
           end
         rescue StandardError => e
@@ -1386,7 +1402,6 @@ when untarring!")
         Log.log_debug('  Into untar returned=' + returned.to_s)
         returned
       end
-
 
       # #######################################################################
       # name : min_max_level_prereq_of
@@ -1435,7 +1450,6 @@ when untarring!")
         end
       end
 
-
       # #######################################################################
       # name : packaging_date_of
       # param : input:fixfile:string
@@ -1466,10 +1480,7 @@ when untarring!")
                             'Oct' => '10', 'Nov' => '11', 'Dec' => '12' }
             #
             month = Regexp.last_match(1)
-            # Log.log_debug('month=' + month.to_s)
             s_month = hash_months[month.to_s]
-            # Log.log_debug('s_month=' + s_month.to_s)
-
             #
             day = Regexp.last_match(2)
             # Log.log_debug('day=' + day.to_s)
@@ -1478,16 +1489,12 @@ when untarring!")
                     else
                       day.to_s
                     end
-            # Log.log_debug('s_day=' + s_day)
-
             #
             hour = Regexp.last_match(3)
             minute = Regexp.last_match(4)
             second = Regexp.last_match(5)
-
             #
             year = Regexp.last_match(6)
-
             #
             packaging_date = year + '_' + s_month + '_' + s_day + '_' +
                 hour.to_s + '_' + minute.to_s + '_' + second.to_s
@@ -1502,7 +1509,6 @@ when untarring!")
         end
         packaging_date
       end
-
 
       # #######################################################################
       # name : is_level_prereq_ok?
@@ -1529,7 +1535,10 @@ when untarring!")
       #    one PREREQ is not satisfied.
       #
       # #######################################################################
-      def is_level_prereq_ok?(target, lpp, min, max)
+      def is_level_prereq_ok?(target,
+                              lpp,
+                              min,
+                              max)
         Log.log_debug('  Into is_level_prereq_ok? target=' +
                           target +
                           ', lpp=' +
@@ -1540,7 +1549,7 @@ when untarring!")
                           max.to_s)
         # By default we return true, meaning the fix can be applied
         returned = true
-
+        #
         begin
           lslpp_file = get_flrtvc_name(:lslpp, target)
           command_output = []
@@ -1569,7 +1578,6 @@ when checking!")
         end
       end
 
-
       # ########################################################################
       # name : increase_filesystem
       # param : input:path:string
@@ -1592,28 +1600,30 @@ when checking!")
           Log.log_debug('items[6]=' + items[6])
           mounts << items[6]
         end
-
         # Get longest match
-        mount = mounts.sort_by!(&:length).reverse!.detect {|mnt| path =~ /#{Regexp.quote(mnt.to_s)}/}
-
+        mount = mounts.sort_by!(&:length).reverse!.detect { |mnt| path =~ /#{Regexp.quote(mnt.to_s)}/ }
         # Then increase by 100 MB
         command_output = []
         Utils.execute2("/usr/sbin/chfs -a size=+100M #{mount}",
                        command_output)
         Log.log_debug('command_output=' + command_output[0])
       end
-    end
+    end # Flrtvc
 
+    # ############################
+    #     E X C E P T I O N      #
+    # ############################
     class FlrtvcNotFound < StandardError
     end
-
+    #
     class URLNotMatch < StandardError
     end
-
+    #
     class InvalidAparProperty < StandardError
     end
-
+    #
     class InvalidCsvProperty < StandardError
     end
+    #
   end
 end

@@ -272,7 +272,20 @@
     downloads are attempted.<br>
  #### 0.5.5:
    - Rubocop warnings removal 
-   
+ #### 0.5.6:
+   Several bugs fixed : 
+   - One status file per target is necessary, otherwise if several 'fix' clauses, then last one 
+     overrides previous ones. Therefore we'll have these files 
+     ./aixautomation/output/logs/PuppetAix_StatusAfterInstall_<target>.yml<br>
+     ./aixautomation/output/logs/PuppetAix_StatusAfterRemoval_<target>.yml<br>
+     ./aixautomation/output/logs/PuppetAix_StatusBeforeInstall_<target>.yml<br>
+     ./aixautomation/output/logs/PuppetAix_StatusBeforeRemoval_<target>.yml<br>
+   - Persistence of flrtvc information commmon to all targets into two files
+       so that these files are taken as input at beginning of flrtvc processings
+       (only if clean='no') : listoffixes_per_url.yml, lppminmax_of_fixes.yml      
+   - 'nimpush' targets are now reset between each 'nimpush' clause info manifests/init.pp
+      this was not teh case previously, and brought a lot of confusion when several 'nimpush'
+      clauses, applying on different sets of targets, existed into manifests/init.pp.
  ### Debugguing tips
  If ever you have in your environment this variable set : 'ENV=//.kshrc', this can lead to abnormal 
  behaviour, not well explained. In that case, perform 'unset ENV' before retrying.

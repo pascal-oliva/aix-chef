@@ -27,7 +27,7 @@ module Automation
       def self.instance
         @@instance
       end
-    end
+    end # LoggerSingleton
 
     # #########################################################################
     # name : Log class
@@ -77,65 +77,64 @@ module Automation
           p 'INFO ' + message
         end if Constants.debug_level >= INFO_LEVEL
       end
-    end
 
-    # #######################################################################
-    # name : log_warning
-    # param :input:message:string
-    # return : none
-    # description : to log in warn mode, always displayed
-    #  rescue is here to be able to run code outside of Puppet
-    # #######################################################################
-    def self.log_warning(message)
-      # This is displayed even without --debug
-      Puppet.warning(message)
-      LoggerSingleton.instance.debug { 'WARNING ' + message }
-    rescue StandardError
-      p 'WARNING ' + message
-    end
-
-    # #######################################################################
-    # name : log_err
-    # param :input:message:string
-    # return : none
-    # description : to log in error mode, always displayed (in red !)
-    #  rescue is here to be able to run code outside of Puppet
-    # #######################################################################
-    def self.log_err(message)
-      begin
+      # #######################################################################
+      # name : log_warning
+      # param :input:message:string
+      # return : none
+      # description : to log in warn mode, always displayed
+      #  rescue is here to be able to run code outside of Puppet
+      # #######################################################################
+      def self.log_warning(message)
         # This is displayed even without --debug
-        Puppet.err(message)
-        # LoggerSingleton.instance.warn {"\033[0;31m#{message}\033[0m"} if message =~/There is no efix data on this
-        # system/
-        LoggerSingleton.instance.error { "\033[0;31m#{message}\033[0m" }
+        Puppet.warning(message)
+        LoggerSingleton.instance.debug { 'WARNING ' + message }
       rescue StandardError
-        p 'ERROR ' + message
+        p 'WARNING ' + message
       end
 
-      if Constants.debug_level >= FULL_DEBUG_LEVEL
-        ###########################################################
-        # To have execution stack of all threads into one file
-        ###########################################################
-        log_file_dir = ::File.join(Constants.output_dir,
-                                   'logs')
-        ::FileUtils.mkdir_p(log_file_dir) unless ::File.directory?(log_file_dir)
-        stack_file = ::File.join(log_file_dir,
-                                 "PuppetAixAutomation_ruby_backtrace_#{Process.pid}.txt")
-        File.open(stack_file, 'a') do |f|
-          f.puts "--- dump backtrace for all threads at #{Time.now}"
-          if Thread.current.respond_to?(:backtrace)
-            Thread.list.each do |t|
-              f.puts t.inspect
-              PP.pp(t.backtrace.delete_if { |frame| frame =~ /^#{File.expand_path(__FILE__)}/ },
+      # #######################################################################
+      # name : log_err
+      # param :input:message:string
+      # return : none
+      # description : to log in error mode, always displayed (in red !)
+      #  rescue is here to be able to run code outside of Puppet
+      # #######################################################################
+      def self.log_err(message)
+        begin
+          # This is displayed even without --debug
+          Puppet.err(message)
+          # LoggerSingleton.instance.warn {"\033[0;31m#{message}\033[0m"} if message =~/There is no efix data on this
+          # system/
+          LoggerSingleton.instance.error { "\033[0;31m#{message}\033[0m" }
+        rescue StandardError
+          p 'ERROR ' + message
+        end
+
+        begin
+          ###########################################################
+          # To have execution stack of all threads into one file
+          ###########################################################
+          log_file_dir = ::File.join(Constants.output_dir,
+                                     'logs')
+          ::FileUtils.mkdir_p(log_file_dir) unless ::File.directory?(log_file_dir)
+          stack_file = ::File.join(log_file_dir,
+                                   "PuppetAixAutomation_ruby_backtrace_#{Process.pid}.txt")
+          File.open(stack_file, 'a') do |f|
+            f.puts "--- dump backtrace for all threads at #{Time.now}"
+            if Thread.current.respond_to?(:backtrace)
+              Thread.list.each do |t|
+                f.puts t.inspect
+                PP.pp(t.backtrace.delete_if { |frame| frame =~ /^#{File.expand_path(__FILE__)}/ },
+                      f) # remove frames resulting from calling this method
+              end
+            else
+              PP.pp(caller.delete_if { |frame| frame =~ /^#{File.expand_path(__FILE__)}/ },
                     f) # remove frames resulting from calling this method
             end
-          else
-            PP.pp(caller.delete_if { |frame| frame =~ /^#{File.expand_path(__FILE__)}/ },
-                  f) # remove frames resulting from calling this method
           end
-        end
+        end if Constants.debug_level >= FULL_DEBUG_LEVEL
       end
-    end
+    end # Log
   end
 end
-

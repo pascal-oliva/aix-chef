@@ -10,8 +10,6 @@ require_relative '../../puppet_x/Automation/Lib/Constants.rb'
 # ##########################################################################
 Puppet::Type.newtype(:download) do
   @doc = 'To manage all simple download functions.'
-  feature :download, 'The ability to manage simple download actions.', \
-:methods => [:download]
 
   include Automation::Lib
 

@@ -239,6 +239,6 @@ format or under the WWWW-XX-YY-ZZZZ format')
         returned ||= SpLevel.sp_exists(sp_tl)
         returned
       end
-    end
+    end # SpLevel
   end
 end

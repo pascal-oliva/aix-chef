@@ -24,6 +24,7 @@ Puppet::Type.type(:fix).provide(:flrtvc) do
     Log.log_info("Provider flrtvc exists! We want to realize up to \
                  \"#{resource[:to_step]}\" : \"#{resource[:ensure]}\" \
 for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
+    #
     returned = true
     returned = false\
 if resource[:ensure].to_s == 'present' || resource[:to_step].to_s == 'status'
@@ -39,7 +40,7 @@ if resource[:ensure].to_s == 'present' || resource[:to_step].to_s == 'status'
     Log.log_info("Provider flrtvc create : doing up \
 to \"#{resource[:to_step]}\" : \"#{resource[:ensure]}\" \
 for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
-
+    #
     targets_str = resource[:targets]
     root = resource[:root]
     to_step = resource[:to_step]
@@ -51,7 +52,7 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     targets_array.each do |target|
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeInstall.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeInstall_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
       #
@@ -121,7 +122,7 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
                 #
                 step = :status
                 Log.log_debug('target=' + target + ' doing :' + step.to_s)
-                @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterInstall.yml')
+                @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterInstall_' + target + '.yml')
                 Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
               else
@@ -152,7 +153,7 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     Log.log_info("Provider flrtvc destroy : doing \"#{resource[:ensure]}\" \
 for targets=\"#{resource[:targets]}\" and clean=\"#{resource[:clean]}\" \
 directory=\"#{resource[:root]}\"")
-
+    #
     targets_str = resource[:targets]
     @flrtvc = Flrtvc.new([targets_str, resource[:root]])
     targets_array = targets_str.split(',')
@@ -160,7 +161,7 @@ directory=\"#{resource[:root]}\"")
     targets_array.each do |target|
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeRemoval.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeRemoval_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
       step = :removeFixes
@@ -171,7 +172,7 @@ directory=\"#{resource[:root]}\"")
       #
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterRemoval.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterRemoval_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
     end
 

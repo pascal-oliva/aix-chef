@@ -69,6 +69,7 @@ lpp_source=\"#{resource[:lpp_source]}\".")
     Log.log_info('dir_lpp_sources=' + @suma.dir_lpp_sources)
     Log.log_info('lpp_source=' + @suma.lpp_source)
 
+    # TODO : check if preview can be skipped if "step_to => :download"
     Log.log_debug('suma.preview')
     missing = @suma.preview
     Log.log_debug('suma.preview missing=' + missing.to_s)

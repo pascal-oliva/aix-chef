@@ -1,3 +1,6 @@
+require_relative './SpLevel.rb'
+require_relative './Constants.rb'
+require_relative './Utils.rb'
 require 'yaml'
 
 module Automation
@@ -58,7 +61,7 @@ module Automation
           raise('Suma constructor needs at least 7 parameters in its "args" \
 parameter. Cannot continue!')
         end
-
+        #
         root = args[0]
         clean = args[1]
         from_level = args[2]
@@ -66,26 +69,26 @@ parameter. Cannot continue!')
         type = args[4]
         to_step = args[5]
         lpp_source = args[6]
-
-        @root_dir = if root =~ /^\//
+        # /^\// ok
+        # %r{^\/} ok
+        @root_dir = if root =~ %r{^\/}
                       root
                     else
                       ::File.join(Dir.pwd,
                                   root)
                     end
         @to_step = to_step.to_s
-        # Log.log_debug("to_step=>#{to_step}")
         @dir_metadata = ::File.join(@root_dir,
                                     'metadata',
                                     from_level)
         # Check metadata root directory
         Utils.check_directory(@dir_metadata)
         Log.log_debug('dir_metadata=' + @dir_metadata)
-
+        #
         filter_ml = ' -a FilterML=' + from_level
         rq_type = ' -a RqType=' + type.to_s
         rq_name = ' '
-
+        #
         @display_metadata = ' -a DisplayName="Downloading metadata into ' + @dir_metadata.to_s + '"'
         if to_level != ''
           rq_name = ' -a RqName=' + to_level
@@ -96,12 +99,10 @@ parameter. Cannot continue!')
                                          to_level)
           @display_lpp_sources = ' -a DisplayName="Downloading lppsources into ' + @dir_lpp_sources.to_s + '"'
           @lpp_source = if lpp_source.nil? || lpp_source.empty?
-                          'PAA_' + type.to_s + '_' + from_level + '_' +
-                              to_level
+                          'PAA_' + type.to_s + '_' + from_level + '_' + to_level
                         else
                           lpp_source
                         end
-
         else
           @dir_lpp_sources = ::File.join(@root_dir,
                                          'lpp_sources',
@@ -114,11 +115,10 @@ parameter. Cannot continue!')
                           lpp_source
                         end
         end
-
         # Check lpp_sources root directory
         Utils.check_directory(@dir_lpp_sources)
         Log.log_debug('dir_lpp_source=' + @dir_lpp_sources)
-
+        #
         @dl = 0.0
         @downloaded = 0
         @failed = 0
@@ -140,14 +140,14 @@ parameter. Cannot continue!')
         metadata_suma_command = @suma_command + @display_metadata + action +
             dl_target + filter_dir
         Log.log_info('SUMA metadata operation: ' + metadata_suma_command)
-
+        #
         begin
-          stdout, stderr, exit_status = Open3.capture3({'LANG' => 'C'},
+          stdout, stderr, exit_status = Open3.capture3({ 'LANG' => 'C' },
                                                        metadata_suma_command)
           unless exit_status.nil?
             Log.log_info('exit_status=' + exit_status.to_s)
           end
-
+          #
           stdout.each_line do |line|
             Log.log_debug(line.chomp.to_s)
           end
@@ -156,7 +156,6 @@ parameter. Cannot continue!')
             returned = false if line =~ /0500-035 No fixes match your query./
             returned = false if line =~ /0500-059 Entitlement is required to download./
             returned = false if line =~ /0500-012 An error occurred attempting to download./
-            Log.log_err(line)
             Log.log_err(line.chomp.to_s)
           end
         rescue StandardError => e
@@ -164,8 +163,7 @@ parameter. Cannot continue!')
           returned = false
           unless exit_status.success?
             raise SumaMetadataError,
-                  'Error: Command ' + metadata_suma_command +
-                      ' returns above error!'
+                  'Error: Command ' + metadata_suma_command + ' returns above error!'
           end
         end
         Log.log_info('Done data metadata operation: ' + metadata_suma_command)
@@ -187,13 +185,13 @@ parameter. Cannot continue!')
         Log.log_info('SUMA preview operation: ' + preview_suma_command)
         preview_error = false
         missing = false
-
-        exit_status = Open3.popen3({'LANG' => 'C'}, preview_suma_command) \
+        #
+        exit_status = Open3.popen3({ 'LANG' => 'C' }, preview_suma_command) \
 do |_stdin, stdout, stderr, wait_thr|
           unless exit_status.nil?
             Log.log_info('exit_status=' + exit_status.to_s)
           end
-
+          #
           stdout.each_line do |line|
             @dl = Regexp.last_match(1).to_f / 1024 / 1024 / 1024 \
 if line =~ /Total bytes of updates downloaded: ([0-9]+)/
@@ -203,28 +201,26 @@ if line =~ /([0-9]+) downloaded/
             @skipped = Regexp.last_match(1).to_i if line =~ /([0-9]+) skipped/
             Log.log_info(line.chomp.to_s)
           end
-
+          #
           Log.log_info('@dl=' + @dl.to_s +
                            ' @downloaded=' + @downloaded.to_s +
                            ' @failed=' + @failed.to_s +
                            ' @skipped=' + @skipped.to_s)
-
           stderr.each_line do |line|
-            preview_error = true \
-if line =~ /0500-035 No fixes match your query./
+            preview_error = true if line =~ /0500-035 No fixes match your query./
             Log.log_err(line.chomp.to_s)
           end
           wait_thr.value # Process::Status object returned.
           @preview_done = true
         end
-
+        #
         if preview_error
           raise SumaPreviewError,
                 'Error: Command ' + preview_suma_command + ' returns above error!'
         end
-
+        #
         missing = true if @downloaded != 0 || @dl != 0.0
-
+        #
         unless preview_error
           Log.log_warning('Preview: ' +
                               @downloaded.to_s +
@@ -234,7 +230,7 @@ if line =~ /0500-035 No fixes match your query./
                               @skipped.to_s +
                               ' skipped fixes')
         end
-
+        #
         Log.log_info('Done data preview operation: ' +
                          preview_suma_command +
                          ' missing:' +
@@ -255,7 +251,7 @@ if line =~ /0500-035 No fixes match your query./
         download_suma_command = @suma_command + @display_lpp_sources +
             action + dl_target + filter_dir
         Log.log_info('SUMA download operation: ' + download_suma_command)
-
+        #
         succeeded = 0
         failed = 0
         skipped = 0
@@ -270,8 +266,8 @@ if line =~ /0500-035 No fixes match your query./
         else
           Log.log_info('Start downloading fixes.')
         end
-
-        exit_status = Open3.popen3({'LANG' => 'C'}, download_suma_command) \
+        #
+        exit_status = Open3.popen3({ 'LANG' => 'C' }, download_suma_command) \
 do |_stdin, stdout, stderr, wait_thr|
           thr = Thread.new do
             start = Time.now
@@ -283,7 +279,7 @@ do |_stdin, stdout, stderr, wait_thr|
               sleep 1
             end
           end
-
+          #
           stdout.each_line do |line|
             succeeded += 1 if line =~ /^Download SUCCEEDED:/
             failed += 1 if line =~ /^Download FAILED:/
@@ -298,15 +294,14 @@ if line =~ /([0-9]+) failed/
 if line =~ /([0-9]+) skipped/
             Log.log_debug(line.chomp.to_s)
           end
-
+          #
           stderr.each_line do |line|
-            Log.log_err(line)
             Log.log_err(line.chomp.to_s)
           end
           thr.exit
           wait_thr.value # Process::Status object returned.
         end
-
+        #
         Log.log_info("Finish downloading #{succeeded} \
 fixes (~ #{download_dl.to_f.round(2)} GB).")
         Log.log_info('Done data download operation ' +
@@ -331,9 +326,7 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
       #  of file instead.
       # #####################################################################
       def self.sp_per_tl
-
         Log.log_debug('Suma.sp_per_tl')
-
         #
         # If yaml file exists, return its contents
         # otherwise mine metadata to build results
@@ -361,22 +354,19 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                              yml_file)
           end
         rescue StandardError
-          Log.log_warning('Service Packs per Technical Level ' +
-                              yml_file +
-                              ' not found ' +
+          Log.log_warning('Service Packs per Technical Level ' + yml_file + ' not found ' +
                               ' : compute it by downloading Suma Metadata')
           mine_metadata = true
         end
-
         #
         # yaml does not exist yet, build it
         #
         if mine_metadata
-          hr_versions = %w[6.1 7.1 7.2]
+          hr_versions = %w(6.1 7.1 7.2)
           sp_per_tl = {}
-
+          #
           hr_versions.each do |hr_version|
-
+            #
             metadata_index = 0
             metadata_successive_failures = 0
             metadata_tl_failures = []
@@ -386,18 +376,19 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                 technical_levels = SpLevel.technical_level(hr_version, metadata_index)
                 technical_level = technical_levels[:technical_level]
                 sps_of_tl = []
-
+                #
                 # Retrieve the data
                 suma = Suma.new([metadata_root_directory, :no, technical_level, '', 'Latest', :download, ''])
-
+                #
                 metadata_return_code = suma.metadata
                 if metadata_return_code
+                  dirmeta = ::File.join(metadata_root_directory,
+                                        'metadata',
+                                        technical_level,
+                                        'installp',
+                                        'ppc')
                   list_of_files =
-                      Dir.glob(::File.join(metadata_root_directory,
-                                           'metadata',
-                                           technical_level,
-                                           'installp',
-                                           'ppc',
+                      Dir.glob(::File.join(dirmeta,
                                            technical_level + '*.xml'))
                   list_of_files.collect! do |file|
                     ::File.open(file) do |f|
@@ -433,11 +424,9 @@ if s.to_s =~ /^<SP name="([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})">/
               index += 1
             end while index < max_failure
           end
-
           #
           # Everything should be cleaned at the end
           #
-
           FileUtils.rm_rf(metadata_root_directory)
           Log.log_debug('Created Service Packs per Technical Level =' +
                             sp_per_tl.to_s)
@@ -467,49 +456,53 @@ if s.to_s =~ /^<SP name="([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})">/
       #    | master  | 7200-01-00-0000 |                           |
       #    +---------+-----------------+---------------------------+
       # #######################################################################
-      #   def self.column_presentation(data)
-      #     widths = {}
-      #     data.keys.each do |key|
-      #       widths[key] = 5 # minimum column width
-      #       # longest string len of values
-      #       val_len = data[key].max_by {|v| v.to_s.length}.to_s.length
-      #       widths[key] = val_len > widths[key] ? val_len : widths[key]
-      #       # length of key
-      #       widths[key] = key.to_s.length > widths[key] ? key.to_s.length : widths[key]
-      #     end
-      #
-      #     result = ' + '
-      #     data.keys.each {|key| result += ''.center(widths[key] + 2, '-') + ' + '}
-      #     result += '\n'
-      #     result += '|'
-      #     data.keys.each {|key| result += key.to_s.center(widths[key] + 2) + '|'}
-      #     result += '\n'
-      #     result += ' + '
-      #     data.keys.each {|key| result += ''.center(widths[key] + 2, '-') + ' + '}
-      #     result += '\n'
-      #     length = data.values.max_by(&:length).length
-      #     0.upto(length - 1).each do |i|
-      #       result += '|'
-      #       data.keys.each {|key| result += data[key][i].to_s.center(widths[key] + 2) + '|'}
-      #       result += '\n'
-      #     end
-      #     result += ' + '
-      #     data.keys.each {|key| result += ''.center(widths[key] + 2, '-') + ' + '}
-      #     result += '\n'
-      #     result
-      #   end
-    end
+      def self.column_presentation(data)
+        widths = {}
+        data.keys.each do |key|
+          widths[key] = 5 # minimum column width
+          # longest string len of values
+          val_len = data[key].max_by { |v| v.to_s.length }.to_s.length
+          widths[key] = val_len > widths[key] ? val_len : widths[key]
+          # length of key
+          widths[key] = key.to_s.length > widths[key] ? key.to_s.length : widths[key]
+        end
 
-    #############################
-    #     E X C E P T I O N     #
-    #############################
+        result = ' + '
+        data.keys.each { |key| result += ''.center(widths[key] + 2, '-') + ' + ' }
+        result += '\n'
+        result += '|'
+        data.keys.each { |key| result += key.to_s.center(widths[key] + 2) + '|' }
+        result += '\n'
+        result += ' + '
+        data.keys.each { |key| result += ''.center(widths[key] + 2, '-') + ' + ' }
+        result += '\n'
+        length = data.values.max_by(&:length).length
+        0.upto(length - 1).each do |i|
+          result += '|'
+          data.keys.each { |key| result += data[key][i].to_s.center(widths[key] + 2) + '|' }
+          result += '\n'
+        end
+        result += ' + '
+        data.keys.each { |key| result += ''.center(widths[key] + 2, '-') + ' + ' }
+        result += '\n'
+        result
+      end
+    end # Suma
+
+    # ############################
+    #     E X C E P T I O N      #
+    # ############################
     class SumaError < StandardError
     end
+    #
     class SumaMetadataError < SumaError
     end
+    #
     class SumaPreviewError < SumaError
     end
+    #
     class SumaDownloadError < SumaError
     end
-  end # Suma
+    #
+  end
 end
