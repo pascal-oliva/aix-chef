@@ -12,6 +12,7 @@ Puppet::Type.type(:download).provide(:suma) do
   include Automation::Lib
 
   commands :lsnim => '/usr/sbin/lsnim'
+  commands :nim => '/usr/sbin/nim'
   commands :rm => '/bin/rm'
 
   # ###########################################################################
@@ -29,11 +30,11 @@ Puppet::Type.type(:download).provide(:suma) do
                  \"#{resource[:ensure]}\" for type=\"#{resource[:type]}\" \
 into directory=\"#{resource[:root]}\" \
 from=\"#{resource[:from]}\" to \"#{resource[:to]}\" \
-lpp_source=\"#{resource[:lpp_source]}\".")
+lpp_source=\"#{resource[:lpp_source]}\" force=#{resource[:force]}.")
     creation_done = true
     Log.log_debug('Suma.new')
     @suma = Suma.new([resource[:root],
-                      resource[:clean],
+                      resource[:force],
                       resource[:from],
                       resource[:to],
                       resource[:type],
@@ -43,7 +44,22 @@ lpp_source=\"#{resource[:lpp_source]}\".")
     Log.log_info('dir_lpp_sources=' + @suma.dir_lpp_sources)
     Log.log_info('lpp_source=' + @suma.lpp_source)
 
-    if resource[:ensure].to_s != 'absent'
+    if resource[:force].to_s == 'yes'
+      creation_done = false
+      begin
+        location = Nim.get_location_of_lpp_source(@suma.lpp_source)
+        Log.log_info('Nim.get_location_of_lpp_source' + @suma.lpp_source + " : " + location)
+        unless location.nil? || location.empty?
+          Log.log_info('Removing contents of NIM lpp_source' + @suma.lpp_source + " : " + location)
+          FileUtils.rm_rf Dir.glob("#{location}/*")
+        end
+        Log.log_info('Removing NIM lpp_source ' + @suma.lpp_source)
+        Log.log_info('nim -o remove')
+        nim('-o', 'remove', @suma.lpp_source)
+      rescue Puppet::ExecutionFailure => e
+        Log.log_debug('nim Puppet::ExecutionFailure e=' + e.to_s)
+      end
+    elsif resource[:ensure].to_s != 'absent'
       begin
         Log.log_info('lsnim')
         lsnim('-l', @suma.lpp_source)

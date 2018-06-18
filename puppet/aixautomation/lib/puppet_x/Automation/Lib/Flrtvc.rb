@@ -94,11 +94,17 @@ module Automation
           lppminmax_of_fixes_yml_file = get_flrtvc_name(:YML,
                                                         'all',
                                                         'lppminmax_of_fixes')
-          @lppminmax_of_fixes = YAML.load_file(target_yml_file)
-          Log.log_debug('Reading from ' +
-                            lppminmax_of_fixes_yml_file +
-                            ' @lppminmax_of_fixes.length=' +
-                            @lppminmax_of_fixes.length.to_s)
+          if File.exist?(lppminmax_of_fixes_yml_file)
+            @lppminmax_of_fixes = YAML.load_file(lppminmax_of_fixes_yml_file)
+            Log.log_debug('Reading from ' +
+                              lppminmax_of_fixes_yml_file +
+                              ' @lppminmax_of_fixes.length=' +
+                              @lppminmax_of_fixes.length.to_s)
+          else
+            @lppminmax_of_fixes = {}
+            Log.log_debug(' @lppminmax_of_fixes.length=' +
+                              @lppminmax_of_fixes.length.to_s)
+          end
           #
           # to keep in memory the list of fixes per url
           #  so that we can build the list of fix for each target,
@@ -107,11 +113,17 @@ module Automation
           listoffixes_per_url_yml_file = get_flrtvc_name(:YML,
                                                          'all',
                                                          'listoffixes_per_url')
-          @listoffixes_per_url = YAML.load_file(target_yml_file)
-          Log.log_debug('Reading from ' +
-                            listoffixes_per_url_yml_file +
-                            ' @listoffixes_per_url.length=' +
-                            @listoffixes_per_url.length.to_s)
+          if File.exist?(listoffixes_per_url_yml_file)
+            @listoffixes_per_url = YAML.load_file(listoffixes_per_url_yml_file)
+            Log.log_debug('Reading from ' +
+                              listoffixes_per_url_yml_file +
+                              ' @listoffixes_per_url.length=' +
+                              @listoffixes_per_url.length.to_s)
+          else
+            @listoffixes_per_url = {}
+            Log.log_debug(' @listoffixes_per_url.length=' +
+                              @listoffixes_per_url.length.to_s)
+          end
         end
       end
 
@@ -214,7 +226,11 @@ module Automation
           returned = if name_suffix == 'lppminmax_of_fixes'
                        ::File.join(@root_dir,
                                    'common_efixes',
-                                   "#{target}_#{name_suffix}.yml")
+                                   "#{name_suffix}.yml")
+                     elsif name_suffix == 'all_listoffixes_per_url'
+                       ::File.join(@root_dir,
+                                   'common_efixes',
+                                   "#{name_suffix}.yml")
                      else
                        ::File.join(@root_dir,
                                    "#{target}_#{name_suffix}.yml")
@@ -247,12 +263,8 @@ module Automation
         Log.log_info('target_yml_file=' + target_yml_file)
         #
         if @clean == :yes
-          begin
-            Log.log_info(' Into mine_this_step  removing ' + target_yml_file)
-            File.delete(target_yml_file)
-          rescue StandardError
-            # if file does not exist, dont care
-          end
+          Log.log_info(' Into mine_this_step  removing ' + target_yml_file)
+          File.delete(target_yml_file) if File.exist?(target_yml_file)
         else
           Log.log_info(' Into mine_this_step  keeping ' + target_yml_file)
         end
@@ -330,7 +342,7 @@ module Automation
         Log.log_debug('status output=' + status_output.to_s)
         Log.log_debug('yaml_file_name=' + yaml_file_name.to_s)
         if !status_output.nil? && !status_output.empty?  \
-                            && !yaml_file_name.nil? && !yaml_file_name.empty?
+                                && !yaml_file_name.nil? && !yaml_file_name.empty?
           # Persist to yml
           status_yml_file = ::File.join(Constants.output_dir,
                                         'logs',

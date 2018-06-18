@@ -85,12 +85,15 @@ name of the lpp_source built, by default "PAA_<type>_<from>_<to>"'
   end
 
   # ############################################################################
-  # :clean parameter to
-  #
-  # Check :clean against a short list, provide a default
+  # :force parameter to force new download of suma metadata and lppsource
+  #   If set to 'yes', all previous downloads are removed, so that everything
+  #    is downloaded again from scratch.
+  #   By default it is set to 'no', meaning all previous downloads are kept
+  #    and reused. This can spare a lot of time.
+  # Check :force against a short list, provide a default
   # ############################################################################
-  newparam(:clean) do
-    desc '"clean" parameter: possible values "yes", "no"'
+  newparam(:force) do
+    desc '"force" parameter: possible values "yes", "no"'
     defaultto :no
     newvalues(:yes, :no)
   end

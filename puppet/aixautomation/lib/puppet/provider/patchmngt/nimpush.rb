@@ -10,7 +10,7 @@ require_relative '../../../puppet_x/Automation/Lib/Log.rb'
 Puppet::Type.type(:patchmngt).provide(:nimpush) do
   include Automation::Lib
 
-  commands nim: '/usr/sbin/nim'
+  commands :nim => '/usr/sbin/nim'
 
   # ###########################################################################
   # exists?

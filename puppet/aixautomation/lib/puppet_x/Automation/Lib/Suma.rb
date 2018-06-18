@@ -45,8 +45,8 @@ module Automation
       # param :input:args:arrays of strings
       #     args[0]:string  root download directory, will contain
       #       metadata and lpp_sources sub-directories
-      #     args[1]:clean:string to clean everything and restart downloads
-      #       from scratch
+      #     args[1]:force:string to force new download of everything
+      #       and restart downloads from scratch
       #     args[2]:from_level:string   for example "7100-01"
       #     args[3]:to_level:string for example "7100-03-05-1524"",
       #       can be empty
@@ -63,20 +63,20 @@ parameter. Cannot continue!')
         end
         #
         root = args[0]
-        clean = args[1]
+        force = args[1]
         from_level = args[2]
         to_level = args[3]
         type = args[4]
         to_step = args[5]
         lpp_source = args[6]
-        # /^\// ok
-        # %r{^\/} ok
+
         @root_dir = if root =~ %r{^\/}
                       root
                     else
                       ::File.join(Dir.pwd,
                                   root)
                     end
+        @force = force.to_s
         @to_step = to_step.to_s
         @dir_metadata = ::File.join(@root_dir,
                                     'metadata',
@@ -124,6 +124,7 @@ parameter. Cannot continue!')
         @failed = 0
         @skipped = 0
         @suma_command = '/usr/sbin/suma -x ' + rq_type + rq_name + filter_ml
+        Log.log_debug('End suma ctor')
       end
 
       # #######################################################################
@@ -186,55 +187,71 @@ parameter. Cannot continue!')
         preview_error = false
         missing = false
         #
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, preview_suma_command) \
+        #
+        #
+        if @force == 'yes'
+          #
+          # Everything should be cleaned at the beginning
+          #
+          FileUtils.rm_rf Dir.glob("#{@dir_lpp_sources}/*")
+          Log.log_info('Cleaning everything as "force"="yes", not necessary to run preview.')
+          missing = true
+        end
+
+        if @force == 'no' || @to_step == 'preview'
+          #
+          #
+          #
+          exit_status = Open3.popen3({ 'LANG' => 'C' }, preview_suma_command) \
 do |_stdin, stdout, stderr, wait_thr|
-          unless exit_status.nil?
-            Log.log_info('exit_status=' + exit_status.to_s)
-          end
-          #
-          stdout.each_line do |line|
-            @dl = Regexp.last_match(1).to_f / 1024 / 1024 / 1024 \
+            unless exit_status.nil?
+              Log.log_info('exit_status=' + exit_status.to_s)
+            end
+            #
+            stdout.each_line do |line|
+              @dl = Regexp.last_match(1).to_f / 1024 / 1024 / 1024 \
 if line =~ /Total bytes of updates downloaded: ([0-9]+)/
-            @downloaded = Regexp.last_match(1).to_i \
+              @downloaded = Regexp.last_match(1).to_i \
 if line =~ /([0-9]+) downloaded/
-            @failed = Regexp.last_match(1).to_i if line =~ /([0-9]+) failed/
-            @skipped = Regexp.last_match(1).to_i if line =~ /([0-9]+) skipped/
-            Log.log_info(line.chomp.to_s)
+              @failed = Regexp.last_match(1).to_i if line =~ /([0-9]+) failed/
+              @skipped = Regexp.last_match(1).to_i if line =~ /([0-9]+) skipped/
+              Log.log_info(line.chomp.to_s)
+            end
+            #
+            Log.log_info('@dl=' + @dl.to_s +
+                             ' @downloaded=' + @downloaded.to_s +
+                             ' @failed=' + @failed.to_s +
+                             ' @skipped=' + @skipped.to_s)
+            stderr.each_line do |line|
+              preview_error = true if line =~ /0500-035 No fixes match your query./
+              Log.log_err(line.chomp.to_s)
+            end
+            wait_thr.value # Process::Status object returned.
+            @preview_done = true
           end
           #
-          Log.log_info('@dl=' + @dl.to_s +
-                           ' @downloaded=' + @downloaded.to_s +
-                           ' @failed=' + @failed.to_s +
-                           ' @skipped=' + @skipped.to_s)
-          stderr.each_line do |line|
-            preview_error = true if line =~ /0500-035 No fixes match your query./
-            Log.log_err(line.chomp.to_s)
+          if preview_error
+            raise SumaPreviewError,
+                  'Error: Command ' + preview_suma_command + ' returns above error!'
           end
-          wait_thr.value # Process::Status object returned.
-          @preview_done = true
+          #
+          missing = true if @downloaded != 0 || @dl != 0.0
+          #
+          unless preview_error
+            Log.log_warning('Preview: ' +
+                                @downloaded.to_s +
+                                ' downloaded (' + @dl.round(2).to_s + ' GB), ' +
+                                @failed.to_s +
+                                ' failed, ' +
+                                @skipped.to_s +
+                                ' skipped fixes')
+          end
+          #
+          Log.log_info('Done data preview operation: ' +
+                           preview_suma_command +
+                           ' missing:' +
+                           missing.to_s)
         end
-        #
-        if preview_error
-          raise SumaPreviewError,
-                'Error: Command ' + preview_suma_command + ' returns above error!'
-        end
-        #
-        missing = true if @downloaded != 0 || @dl != 0.0
-        #
-        unless preview_error
-          Log.log_warning('Preview: ' +
-                              @downloaded.to_s +
-                              ' downloaded (' + @dl.round(2).to_s + ' GB), ' +
-                              @failed.to_s +
-                              ' failed, ' +
-                              @skipped.to_s +
-                              ' skipped fixes')
-        end
-        #
-        Log.log_info('Done data preview operation: ' +
-                         preview_suma_command +
-                         ' missing:' +
-                         missing.to_s)
         missing
       end
 
@@ -337,29 +354,37 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                                               'suma')
         yml_file = ::File.join(root_directory,
                                'sp_per_tl.yml')
-        mine_metadata = false
-        begin
-          Log.log_info('Attempting to load ' + yml_file + ' file')
-          sp_per_tl_from_file = YAML.load_file(yml_file)
-          if sp_per_tl_from_file.nil?
-            Log.log_info('Service Packs per Technical Level not found into ' +
-                             yml_file)
-            mine_metadata = true
-          elsif sp_per_tl_from_file.empty?
-            Log.log_info('Service Packs per Technical Level not set into ' +
-                             yml_file)
-            mine_metadata = true
-          else
-            Log.log_info('Service Packs per Technical Level found into ' +
-                             yml_file)
-          end
-        rescue StandardError
-          Log.log_warning('Service Packs per Technical Level ' + yml_file + ' not found ' +
-                              ' : compute it by downloading Suma Metadata')
+        #
+        # if force then compute everything again
+        #
+        if @force == 'yes'
+          File.delete(yml_file) if File.exist?(yml_file)
           mine_metadata = true
+        else
+          mine_metadata = false
+          begin
+            Log.log_info('Attempting to load ' + yml_file + ' file')
+            sp_per_tl_from_file = YAML.load_file(yml_file)
+            if sp_per_tl_from_file.nil?
+              Log.log_info('Service Packs per Technical Level not found into ' +
+                               yml_file)
+              mine_metadata = true
+            elsif sp_per_tl_from_file.empty?
+              Log.log_info('Service Packs per Technical Level not set into ' +
+                               yml_file)
+              mine_metadata = true
+            else
+              Log.log_info('Service Packs per Technical Level found into ' +
+                               yml_file)
+            end
+          rescue StandardError
+            Log.log_warning('Service Packs per Technical Level ' + yml_file + ' not found ' +
+                                ' : compute it by downloading Suma Metadata')
+            mine_metadata = true
+          end
         end
         #
-        # yaml does not exist yet, build it
+        # yaml does not exist yet, or yaml needs to be computed again, build it
         #
         if mine_metadata
           hr_versions = %w(6.1 7.1 7.2)

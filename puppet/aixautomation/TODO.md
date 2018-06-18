@@ -23,7 +23,12 @@
 ** Propose a nice interface to display SP per TL results to user
 ** Suma preview is likely to be unnecessary if 'to_step' is set to 'download'. Consider skipping 
  this preview step in this case.
-
+** Verify Idempotence
+** In case of updates of several LPARs, launch these updates in parallel, as each update is quite 
+ long
+** Update in preview mode only to see what would be done.
+  
+  
   
 
          
