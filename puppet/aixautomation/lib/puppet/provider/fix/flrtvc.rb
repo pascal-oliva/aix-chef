@@ -1,6 +1,7 @@
 require_relative '../../../puppet_x/Automation/Lib/Utils.rb'
 require_relative '../../../puppet_x/Automation/Lib/Log.rb'
 require_relative '../../../puppet_x/Automation/Lib/Flrtvc.rb'
+require_relative '../../../puppet_x/Automation/Lib/Constants.rb'
 
 # ##########################################################################
 # name : flrtvc provider of the fix type
@@ -21,8 +22,8 @@ Puppet::Type.type(:fix).provide(:flrtvc) do
   #      false       absent    do nothing               n/a
   # ###########################################################################
   def exists?
-    Log.log_info("Provider flrtvc exists! We want to realize up to \
-                 \"#{resource[:to_step]}\" : \"#{resource[:ensure]}\" \
+    Log.log_info("Provider flrtvc 'exists?' method : we want to realize up to \"#{resource[:to_step]}\" :
+\"#{resource[:ensure]}\" \
 for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     #
     returned = true
@@ -37,7 +38,7 @@ if resource[:ensure].to_s == 'present' || resource[:to_step].to_s == 'status'
   # rubocop:disable Metrics/BlockNesting
   # ###########################################################################
   def create
-    Log.log_info("Provider flrtvc create : doing up \
+    Log.log_info("Provider flrtvc 'create' method : doing up \
 to \"#{resource[:to_step]}\" : \"#{resource[:ensure]}\" \
 for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     #
@@ -45,14 +46,14 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
     root = resource[:root]
     to_step = resource[:to_step]
     level = resource[:level]
-    clean = resource[:clean]
-    @flrtvc = Flrtvc.new([targets_str, root, to_step, level, clean])
+    force = resource[:force]
+    @flrtvc = Flrtvc.new([targets_str, root, to_step, level, force])
     targets_array = targets_str.split(',')
 
     targets_array.each do |target|
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeInstall_' + target + '.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeEfixInstall_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
       #
@@ -122,7 +123,7 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
                 #
                 step = :status
                 Log.log_debug('target=' + target + ' doing :' + step.to_s)
-                @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterInstall_' + target + '.yml')
+                @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterEfixInstall_' + target + '.yml')
                 Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
               else
@@ -146,12 +147,12 @@ for targets=\"#{resource[:targets]}\" into directory=\"#{resource[:root]}\"")
   end
 
   # ###########################################################################
-  #
+  # rubocop:enable Metrics/BlockNesting
   #
   # ###########################################################################
   def destroy
-    Log.log_info("Provider flrtvc destroy : doing \"#{resource[:ensure]}\" \
-for targets=\"#{resource[:targets]}\" and clean=\"#{resource[:clean]}\" \
+    Log.log_info("Provider flrtvc 'destroy' method : doing \"#{resource[:ensure]}\" \
+for targets=\"#{resource[:targets]}\" and force=\"#{resource[:force]}\" \
 directory=\"#{resource[:root]}\"")
     #
     targets_str = resource[:targets]
@@ -161,7 +162,7 @@ directory=\"#{resource[:root]}\"")
     targets_array.each do |target|
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeRemoval_' + target + '.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusBeforeEfixRemoval_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
 
       step = :removeFixes
@@ -172,7 +173,7 @@ directory=\"#{resource[:root]}\"")
       #
       step = :status
       Log.log_debug('target=' + target + ' doing :' + step.to_s)
-      @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterRemoval_' + target + '.yml')
+      @flrtvc.run_step(step, target, 'PuppetAix_StatusAfterEfixRemoval_' + target + '.yml')
       Log.log_debug('target=' + target + ' done  :' + step.to_s)
     end
 
@@ -180,11 +181,11 @@ directory=\"#{resource[:root]}\"")
     @flrtvc.remove_nim_resources
     Log.log_debug('flrtvc.removed nim resources')
 
-    if resource[:clean] == 'yes'
-      Log.log_debug('flrtvc.removing downloaded ifix files')
-      @flrtvc.remove_downloaded_files
-      Log.log_debug('flrtvc.removed downloaded ifix files')
-    end
+    #if resource[:clean] == 'yes'
+    Log.log_debug('flrtvc.removing downloaded ifix files')
+    @flrtvc.remove_downloaded_files
+    Log.log_debug('flrtvc.removed downloaded ifix files')
+    #end
 
     Log.log_debug('End of flrtvc.destroy')
   end

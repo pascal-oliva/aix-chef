@@ -1,3 +1,4 @@
+require_relative './Constants.rb'
 require 'logger'
 require 'open3'
 require 'pp'
@@ -57,7 +58,7 @@ module Automation
           Puppet.debug(message)
           LoggerSingleton.instance.debug { message }
         rescue StandardError
-          p 'DEBUG ' + message
+          p ('DEBUG ' + message + "\n").color(:green)
         end if Constants.debug_level >= DEBUG_LEVEL
       end
 
@@ -74,7 +75,7 @@ module Automation
           Puppet.info(message)
           LoggerSingleton.instance.info { message }
         rescue StandardError
-          p 'INFO ' + message
+          p ('INFO ' + message + "\n").color(:green)
         end if Constants.debug_level >= INFO_LEVEL
       end
 
@@ -90,7 +91,7 @@ module Automation
         Puppet.warning(message)
         LoggerSingleton.instance.debug { 'WARNING ' + message }
       rescue StandardError
-        p 'WARNING ' + message
+        p ('WARNING ' + message + "\n").color(:orange)
       end
 
       # #######################################################################
@@ -108,7 +109,7 @@ module Automation
           # system/
           LoggerSingleton.instance.error { "\033[0;31m#{message}\033[0m" }
         rescue StandardError
-          p 'ERROR ' + message
+          p ('ERROR ' + message + "\n").color(:red)
         end
 
         begin

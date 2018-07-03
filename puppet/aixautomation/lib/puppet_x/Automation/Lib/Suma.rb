@@ -164,10 +164,10 @@ parameter. Cannot continue!')
           returned = false
           unless exit_status.success?
             raise SumaMetadataError,
-                  'Error: Command ' + metadata_suma_command + ' returns above error!'
+                  'SumaMetadataError: Command ' + metadata_suma_command + ' returns above error!'
           end
         end
-        Log.log_info('Done data metadata operation: ' + metadata_suma_command)
+        Log.log_info('Done suma metadata operation: ' + metadata_suma_command)
         returned
       end
 
@@ -178,36 +178,25 @@ parameter. Cannot continue!')
       # description :
       # ########################################################################
       def preview
+        # dl_target : where to download
         dl_target = ' -a DLTarget=' + @dir_lpp_sources
+        # filter_dir : does not download if already here
         filter_dir = ' -a FilterDir=' + @dir_lpp_sources
         action = ' -a Action=Preview'
         preview_suma_command = @suma_command + @display_lpp_sources +
             action + dl_target + filter_dir
-        Log.log_info('SUMA preview operation: ' + preview_suma_command)
         preview_error = false
         missing = false
-        #
-        #
-        #
-        if @force == 'yes'
-          #
-          # Everything should be cleaned at the beginning
-          #
-          FileUtils.rm_rf Dir.glob("#{@dir_lpp_sources}/*")
-          Log.log_info('Cleaning everything as "force"="yes", not necessary to run preview.')
-          missing = true
-        end
 
-        if @force == 'no' || @to_step == 'preview'
+        # If force=yes we are doing the preview only if explicitly asked
+        # Else we are doing it in any case
+        # If force and download we do the download without preview.
+        if (@force == 'yes' && @to_step == 'preview') || @force == 'no'
+          Log.log_info('SUMA preview operation: ' + preview_suma_command)
+          Log.log_info('@force=' + @force + ' @to_step=' + @to_step)
           #
-          #
-          #
-          exit_status = Open3.popen3({ 'LANG' => 'C' }, preview_suma_command) \
+          Open3.popen3({ 'LANG' => 'C' }, preview_suma_command) \
 do |_stdin, stdout, stderr, wait_thr|
-            unless exit_status.nil?
-              Log.log_info('exit_status=' + exit_status.to_s)
-            end
-            #
             stdout.each_line do |line|
               @dl = Regexp.last_match(1).to_f / 1024 / 1024 / 1024 \
 if line =~ /Total bytes of updates downloaded: ([0-9]+)/
@@ -224,6 +213,7 @@ if line =~ /([0-9]+) downloaded/
                              ' @skipped=' + @skipped.to_s)
             stderr.each_line do |line|
               preview_error = true if line =~ /0500-035 No fixes match your query./
+              preview_error = true if line =~ /0500-013 Failed to retrieve list from fix server./
               Log.log_err(line.chomp.to_s)
             end
             wait_thr.value # Process::Status object returned.
@@ -232,26 +222,30 @@ if line =~ /([0-9]+) downloaded/
           #
           if preview_error
             raise SumaPreviewError,
-                  'Error: Command ' + preview_suma_command + ' returns above error!'
+                  'SumaPreviewError : command ' + preview_suma_command + ' returns above error!'
           end
           #
           missing = true if @downloaded != 0 || @dl != 0.0
           #
-          unless preview_error
-            Log.log_warning('Preview: ' +
-                                @downloaded.to_s +
-                                ' downloaded (' + @dl.round(2).to_s + ' GB), ' +
-                                @failed.to_s +
-                                ' failed, ' +
-                                @skipped.to_s +
-                                ' skipped fixes')
-          end
-          #
-          Log.log_info('Done data preview operation: ' +
+          Log.log_warning('Preview: ' +
+                              @downloaded.to_s +
+                              ' downloaded (' + @dl.round(2).to_s + ' GB), ' +
+                              @failed.to_s +
+                              ' failed, ' +
+                              @skipped.to_s +
+                              ' skipped fixes')
+          Log.log_info('Done suma preview operation: ' +
+                           preview_suma_command +
+                           ' missing:' +
+                           missing.to_s)
+        else
+          missing = true
+          Log.log_info('Skipped suma preview operation: ' +
                            preview_suma_command +
                            ' missing:' +
                            missing.to_s)
         end
+        #
         missing
       end
 
@@ -262,11 +256,14 @@ if line =~ /([0-9]+) downloaded/
       # description :
       # #######################################################################
       def download
+        # dl_target : where to download
         dl_target = ' -a DLTarget=' + @dir_lpp_sources
+        # filter_dir : does not download if already here
         filter_dir = ' -a FilterDir=' + @dir_lpp_sources
         action = ' -a Action=Download'
         download_suma_command = @suma_command + @display_lpp_sources +
             action + dl_target + filter_dir
+        download_error = false
         Log.log_info('SUMA download operation: ' + download_suma_command)
         #
         succeeded = 0
@@ -313,20 +310,29 @@ if line =~ /([0-9]+) skipped/
           end
           #
           stderr.each_line do |line|
+            download_error = true if line =~ /0500-013 Failed to retrieve list from fix server./
+            download_error = true if line =~ /0500-035 No fixes match your query./
+            download_error = true if line =~ /0500-012 An error occurred attempting to download./
             Log.log_err(line.chomp.to_s)
           end
           thr.exit
           wait_thr.value # Process::Status object returned.
         end
+
+        #
+        if download_error
+          raise SumaDownloadError,
+                'SumaDownloadError : command ' + download_suma_command + ' returns above error!'
+        end
+
         #
         Log.log_info("Finish downloading #{succeeded} \
 fixes (~ #{download_dl.to_f.round(2)} GB).")
-        Log.log_info('Done data download operation ' +
+        Log.log_info('Done suma download operation ' +
                          download_suma_command)
         unless exit_status.success?
           raise SumaDownloadError,
-                'Error: Command ' + download_suma_command +
-                    ' returns above error!'
+                'SumaDownloadError: Command ' + download_suma_command + ' returns above error!'
         end
         @dl = download_dl
         @downloaded = download_downloaded
@@ -337,13 +343,14 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
       # #####################################################################
       # name : sp_per_tl
       # return : hash containing list of servicepacks per technical level
-      # description : generate as many data metadata requests than necessary
+      # description : generate as many suma metadata requests than necessary
       #  to be able to build hash containing all results. Store results into
       #  a yaml file. If yaml file already exists, then return contents
       #  of file instead.
       # #####################################################################
       def self.sp_per_tl
         Log.log_debug('Suma.sp_per_tl')
+        sp_per_tl_from_file = {}
         #
         # If yaml file exists, return its contents
         # otherwise mine metadata to build results
@@ -378,8 +385,8 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                                yml_file)
             end
           rescue StandardError
-            Log.log_warning('Service Packs per Technical Level ' + yml_file + ' not found ' +
-                                ' : compute it by downloading Suma Metadata')
+            Log.log_warning('Service Packs per Technical Level ' + yml_file +
+                                ' not found : compute it by downloading Suma Metadata')
             mine_metadata = true
           end
         end
@@ -412,9 +419,8 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                                         technical_level,
                                         'installp',
                                         'ppc')
-                  list_of_files =
-                      Dir.glob(::File.join(dirmeta,
-                                           technical_level + '*.xml'))
+                  list_of_files = Dir.glob(::File.join(dirmeta,
+                                                       technical_level + '*.xml'))
                   list_of_files.collect! do |file|
                     ::File.open(file) do |f|
                       servicepack = nil
@@ -424,9 +430,8 @@ fixes (~ #{download_dl.to_f.round(2)} GB).")
                       # ######### END #############
                       servicepack = Regexp.last_match(1) \
 if s.to_s =~ /^<SP name="([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})">/
-                      unless servicepack.nil?
-                        sps_of_tl.push(servicepack)
-                      end
+                      #
+                      sps_of_tl.push(servicepack) unless servicepack.nil?
                     end
                   end
                   sp_per_tl[technical_level] = sps_of_tl

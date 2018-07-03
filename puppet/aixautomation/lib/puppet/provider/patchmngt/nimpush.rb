@@ -23,11 +23,16 @@ Puppet::Type.type(:patchmngt).provide(:nimpush) do
   #      false       absent    do nothing               n/a
   # ###########################################################################
   def exists?
-    Log.log_info("Provider 'nimpush' exists! We want to realize : \
-                 \"#{resource[:ensure]}\" for \"#{resource[:action]}\" action \
-sync=\"#{resource[:sync]}\" mode=\"#{resource[:mode]}\" \
-on \"#{resource[:targets]}\" targets with \"#{resource[:lpp_source]}\" \
-lpp_source.")
+    Log.log_info("Provider nimpush 'exists?' method : we want to realize : \"#{resource[:ensure]}\" for \
+\"#{resource[:action]}\" action sync=\"#{resource[:sync]}\" mode=\"#{resource[:mode]}\" \
+on \"#{resource[:targets]}\" targets with \"#{resource[:lpp_source]}\" lpp_source.")
+
+    # default value for returned, depends on 'ensure'
+    returned = true
+    if resource[:ensure] == absent
+      returned = false
+    end
+
     #
     targets = resource[:targets].to_s
     Log.log_debug('targets=' + targets)
@@ -70,13 +75,15 @@ lpp_source.")
       # set the default values
       returned = resource[:ensure].to_s == 'present'
 
-      # check the presence or the absence of all filesets on each verified target
+      # check the presence or the absence of filesets on each target
       filesets = Utils.get_filesets_of_lppsource(lpp_source)
+      Log.log_debug('Checking the presence or the absence of filesets on each target. Takes some time ... ')
 
       # nim -o lslpp -a filesets="openssl.base openssh.base.server"
       #   -a lslpp_flags=La quimby05
       targets_array.each do |target|
         begin
+          Log.log_debug('Checking the presence or the absence of filesets on ' + target + '. Takes some time ... ')
           nim('-o', 'lslpp', '-a', "filesets=\"#{filesets}\"", \
               '-a', 'lslpp_flags=La', target.to_s)
           if resource[:ensure].to_s == 'present'
@@ -138,14 +145,15 @@ lpp_source.")
           # to do update
         elsif resource[:ensure].to_s == 'absent'
           returned = false
-          Log.log_debug('To remove update')
+          #Log.log_debug('To remove update')
           # to do nothing
+          Log.log_info('Nothing to be done')
         end
       elsif mode == 'reject'
         if resource[:ensure].to_s == 'present'
           returned = true
-          Log.log_debug('To do nothing')
           # to do nothing
+          Log.log_info('Nothing to be done')
         elsif resource[:ensure].to_s == 'absent'
           returned = true
           Log.log_debug('To remove update : perform reject')
@@ -175,10 +183,8 @@ lpp_source.")
   #
   # ###########################################################################
   def create
-    Log.log_info("Provider nimpush create.\
- Doing : \"#{resource[:ensure]}\" for \"#{resource[:action]}\" \
-action on \"#{resource[:targets]}\" targets \
-with \"#{resource[:lpp_source]}\" lpp_source.")
+    Log.log_info("Provider nimpush 'create' method : doing : \"#{resource[:ensure]}\" for \"#{resource[:action]}\" \
+action on \"#{resource[:targets]}\" targets with \"#{resource[:lpp_source]}\" lpp_source.")
     #
     action = resource[:action].to_s
     sync = resource[:sync].to_s
@@ -201,7 +207,10 @@ with \"#{resource[:lpp_source]}\" lpp_source.")
       results_status = {}
       targets_array.each do |target|
         status_output = Utils.status(target)
-        Log.log_debug('target=' + target + ' ' + status_output.to_s)
+        Log.log_debug('target=' + target)
+        status_output.keys.each { |key|
+          Log.log_debug(' ' + key + '=>' + status_output[key])
+        }
         results_status[target] = status_output
       end
       # persist to yaml
@@ -231,7 +240,7 @@ with \"#{resource[:lpp_source]}\" lpp_source.")
       if mode.to_s == 'update'
         begin
           Log.log_debug('Nim.cust_update')
-          Nim.cust_update(lpp_source, sync_option, '', targets_array)
+          Nim.cust_update(lpp_source, sync_option, 'agXY', targets_array)
           Log.log_debug('Nim.cust_update')
         rescue Nim::NimCustOpError => e
           Log.log_err("NimCustOpError #{e} " + e.to_s)
@@ -296,7 +305,7 @@ with \"#{resource[:lpp_source]}\" lpp_source.")
   #
   # ###########################################################################
   def destroy
-    Log.log_info("Provider nimpush destroy. Doing : \"#{resource[:ensure]}\" \
+    Log.log_info("Provider nimpush 'destroy' method : doing : \"#{resource[:ensure]}\" \
 for \"#{resource[:action]}\" action on \"#{resource[:targets]}\" \
 targets with \"#{resource[:lpp_source]}\" lpp_source.")
     #
@@ -371,7 +380,7 @@ targets with \"#{resource[:lpp_source]}\" lpp_source.")
       end
 
     when :reboot.to_s
-      Log.log_debug('Nothing to be done : not supported')
+      Log.log_info('Nothing to be done : not supported')
 
     else
       raise('"action" must be either "status", install", "update", or "reboot"')

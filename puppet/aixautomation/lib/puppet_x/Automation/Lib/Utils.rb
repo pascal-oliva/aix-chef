@@ -12,27 +12,32 @@ module Automation
       # ########################################################################
       # name : execute
       # param : input:command:string
-      # return :
+      # return : int return code
       # description : executes (by using Open3.popen3)
       #   command received in parameter.
       #  This method is a convenience used by all other methods.
       # ########################################################################
       def self.execute(command)
-        Log.log_info('Utils.execute command : ' + command)
+        Log.log_debug('Utils.execute command : ' + command)
         #
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, command) do |_stdin, stdout, stderr, wait_thr|
-          unless exit_status.nil?
-            Log.log_info('exit_status=' + exit_status.to_s)
-          end
+        Open3.popen3({ 'LANG' => 'C' }, command) do |_stdin, stdout, stderr, wait_thr|
           #
           stdout.each_line do |line|
-            Log.log_info(line.chomp.to_s)
+            Log.log_debug(line.chomp.to_s)
           end
           #
           stderr.each_line do |line|
             Log.log_err(line.chomp.to_s)
           end
-          wait_thr.value # Process::Status object returned.
+          Log.log_debug('Utils.execute wait_thr.value(' +
+                            wait_thr.value.class.to_s + ')="' +
+                            wait_thr.value.to_s +
+                            '" wait_thr.value.exitstatus ="' +
+                            wait_thr.value.exitstatus.to_s +
+                            '"')
+          # wait_thr.value : Process::Status object returned.
+          # wait_thr.value.exitstatus : int
+          wait_thr.value.exitstatus
         end
       end
 
@@ -40,7 +45,7 @@ module Automation
       # name : execute2
       # param : input:command:string
       # param : output:command_output: array of strings
-      # return :
+      # return : int return code
       # description : executes (by using Open3.popen3)
       #   command received in parameter,
       #   and set the command_output[0] param as output parameter
@@ -50,10 +55,7 @@ module Automation
           command_output)
         Log.log_debug('Utils.execute2 command : ' + command)
         #
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, command) do |_stdin, stdout, stderr, wait_thr|
-          unless exit_status.nil?
-            Log.log_debug('   exit_status=' + exit_status.to_s)
-          end
+        Open3.popen3({ 'LANG' => 'C' }, command) do |_stdin, stdout, stderr, wait_thr|
           command_output[0] = ''
           stdout.each_line do |line|
             command_output[0] = command_output[0] + line
@@ -62,7 +64,15 @@ module Automation
           stderr.each_line do |line|
             Log.log_err("    #{line.chomp}")
           end
-          wait_thr.value # Process::Status object returned.
+          Log.log_debug('Utils.execute2 wait_thr.value(' +
+                            wait_thr.value.class.to_s + ')="' +
+                            wait_thr.value.to_s +
+                            '" wait_thr.value.exitstatus ="' +
+                            wait_thr.value.exitstatus.to_s +
+                            '"')
+          # wait_thr.value : Process::Status object returned.
+          # wait_thr.value.exitstatus : int
+          wait_thr.value.exitstatus
         end
       end
 
@@ -85,7 +95,7 @@ module Automation
           if !stderr.nil? && !stderr.strip.empty?
             Log.log_err("stderr=#{stderr}")
           end
-          if !status.nil?
+          unless status.nil?
             Log.log_debug("status=#{status}")
           end
           unless status.success?
@@ -113,22 +123,28 @@ module Automation
           kept,
           suppressed)
         Log.log_debug('Into check_input_targets targets=' + targets.to_s +
-                          " kept=" + kept.to_s +
-                          " suppressed=" + suppressed.to_s)
+                          ' kept=' + kept.to_s +
+                          ' suppressed=' + suppressed.to_s)
         #
         targets_list = targets.to_s.split(/\W+/)
         Log.log_debug("targets_list=#{targets_list}")
         #
         standalones = Facter.value(:standalones)
-        standalones_keys = []
-        unless standalones.nil?
-          Log.log_debug('standalones=' + standalones.to_s)
-          standalones_keys = standalones.keys
-          Log.log_debug('standalones_keys=' + standalones_keys.to_s)
-          # Facter.value(:standalones).each do |standalone|
-          #   Log.log_debug('standalone=' + standalone.to_s)
-          # end
-        end
+        # standalones_keys = []
+        # unless standalones.nil?
+        # for key1 in standalones.keys
+        # Log.log_debug('standalone:' + key1)
+        # values = standalones[key1]
+        # for key2 in values.keys
+        #  Log.log_debug(' ' + key2 + '=>' + values[key2])
+        # end
+        # end
+        standalones_keys = standalones.keys
+        # Log.log_debug('standalones_keys=' + standalones_keys.to_s)
+        # Facter.value(:standalones).each do |standalone|
+        #   Log.log_debug('standalone=' + standalone.to_s)
+        # end
+        # end
         #
         targets_list.each do |target|
           if !target.empty?
@@ -172,7 +188,6 @@ module Automation
             if !stdout.nil? && !stdout.strip.empty?
               Log.log_debug("stdout=#{stdout}")
             end
-
             returned = 0
           end
         else
@@ -197,7 +212,7 @@ module Automation
         # suppress empty lines, commented lines, and 2 first lines
         stdout, stderr, status = Open3.capture3("#{cmd} | /bin/egrep -v '=====|Fileset Name|#|^$' | /bin/awk '{print $1}'")
         Log.log_debug("cmd   =#{cmd}")
-        Log.log_debug("status=#{status}") if !status.nil?
+        Log.log_debug("status=#{status}") unless status.nil?
         returned = ''
         if status.success?
           if !stdout.nil? && !stdout.strip.empty?
@@ -206,10 +221,8 @@ module Automation
           #
           items = stdout.split("\n")
           returned = string_separated(items, ' ')
-        else
-          if !stderr.nil? && !stderr.strip.empty?
-            Log.log_err("stderr=#{stderr}")
-          end
+        elsif !stderr.nil? && !stderr.strip.empty?
+          Log.log_err("stderr=#{stderr}")
         end
         Log.log_debug('Ending get_filesets_of_lppsource ' + returned)
         returned
@@ -217,7 +230,7 @@ module Automation
 
       # ########################################################################
       # name : get_applied_filesets
-      # param : target
+      # param : input:target:string
       # return : stdout or stderr
       # description : returns the list of applied filesets
       #  so that we can either commit them, or reject them
@@ -227,15 +240,13 @@ module Automation
         #
         remote_cmd = '/bin/lslpp -lcq | /bin/grep -w APPLIED'
         remote_output = []
-        remote_cmd_status = Remote.c_rsh(target, remote_cmd, remote_output)
-        if remote_cmd_status.success?
+        remote_cmd_rc = Remote.c_rsh(target, remote_cmd, remote_output)
+        if remote_cmd_rc == 0
           # here is the remote command output parsing method
           cmd = "/bin/echo \"#{remote_output[0]}\" | /bin/awk '{print $1}' | /bin/sort -u"
           stdout, stderr, status = Open3.capture3(cmd)
           Log.log_debug("cmd   =#{cmd}")
-          if !status.nil?
-            Log.log_debug("status=#{status}")
-          end
+          Log.log_debug("status=#{status}") unless status.nil?
           if status.success?
             if !stdout.nil? && !stdout.strip.empty?
               Log.log_debug("stdout=#{stdout}")
@@ -268,16 +279,14 @@ module Automation
                           filesets.to_s)
         remote_cmd = '/bin/lslpp -lcq | /bin/grep -w APPLIED'
         remote_output = []
-        remote_cmd_status = Remote.c_rsh(target,
-                                         remote_cmd,
-                                         remote_output)
-        if remote_cmd_status.success?
+        remote_cmd_rc = Remote.c_rsh(target,
+                                     remote_cmd,
+                                     remote_output)
+        if remote_cmd_rc == 0
           # here is the remote command output parsing method
           stdout, stderr, status =
               Open3.capture3("/bin/echo \"#{remote_output[0]}\" | /bin/awk -F ':' '{print $2}' | /bin/sort -u")
-          if !status.nil?
-            Log.log_debug("status=#{status}")
-          end
+          Log.log_debug("status=#{status}") unless status.nil?
           if status.success?
             if !stdout.nil? && !stdout.strip.empty?
               Log.log_debug("stdout=#{stdout}")
@@ -285,10 +294,8 @@ module Automation
             # items = []
             items = stdout.split("\n")
             filesets[0] = string_separated(items, ' ')
-          else
-            if !stderr.nil? && !stderr.strip.empty?
-              Log.log_err("stderr=#{stderr}")
-            end
+          elsif !stderr.nil? && !stderr.strip.empty?
+            Log.log_err("stderr=#{stderr}")
           end
           Log.log_debug('Ending get_applied_filesets2 : ' +
                             status.to_s)
@@ -325,8 +332,8 @@ module Automation
 
       # ########################################################################
       # name : string_separated
-      # param : array_of_items
-      # param : separator, blanck by default
+      # param : input:array_of_items:[]
+      # param : input:separator:strin, blanck by default
       # return : string containing items separated, separator is second param
       # description : takes an array with items, returns a
       #   string with items separated
@@ -427,15 +434,15 @@ module Automation
         status_output = {}
         remote_cmd1 = '/bin/oslevel -s'
         remote_output1 = []
-        remote_cmd_status1 = Remote.c_rsh(target, remote_cmd1, remote_output1)
-        if remote_cmd_status1.success?
+        remote_cmd_rc1 = Remote.c_rsh(target, remote_cmd1, remote_output1)
+        if remote_cmd_rc1 == 0
           status_output['oslevel -s'] = remote_output1[0].chomp
         end
         #
         remote_cmd2 = "/bin/lslpp -e | /bin/sed '/STATE codes/,$ d'"
         remote_output2 = []
-        remote_cmd_status2 = Remote.c_rsh(target, remote_cmd2, remote_output2)
-        if remote_cmd_status2.success?
+        remote_cmd_rc2 = Remote.c_rsh(target, remote_cmd2, remote_output2)
+        if remote_cmd_rc2 == 0
           status_output['lslpp -e'] = remote_output2[0].chomp
         end
         status_output

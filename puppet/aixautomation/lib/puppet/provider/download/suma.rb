@@ -26,11 +26,9 @@ Puppet::Type.type(:download).provide(:suma) do
   #      false       absent    do nothing               n/a
   # ###########################################################################
   def exists?
-    Log.log_info("Provider suma exists! We want to realize : \
-                 \"#{resource[:ensure]}\" for type=\"#{resource[:type]}\" \
-into directory=\"#{resource[:root]}\" \
-from=\"#{resource[:from]}\" to \"#{resource[:to]}\" \
-lpp_source=\"#{resource[:lpp_source]}\" force=#{resource[:force]}.")
+    Log.log_info("Provider suma 'exists?' method : we want to realize : \"#{resource[:ensure]}\" for \
+type=\"#{resource[:type]}\" into directory=\"#{resource[:root]}\" from=\"#{resource[:from]}\" \
+to \"#{resource[:to]}\" lpp_source=\"#{resource[:lpp_source]}\" force=#{resource[:force]}.")
     creation_done = true
     Log.log_debug('Suma.new')
     @suma = Suma.new([resource[:root],
@@ -48,23 +46,23 @@ lpp_source=\"#{resource[:lpp_source]}\" force=#{resource[:force]}.")
       creation_done = false
       begin
         location = Nim.get_location_of_lpp_source(@suma.lpp_source)
-        Log.log_info('Nim.get_location_of_lpp_source' + @suma.lpp_source + " : " + location)
+        Log.log_info('Nim.get_location_of_lpp_source ' + @suma.lpp_source + ' : ' + location)
         unless location.nil? || location.empty?
-          Log.log_info('Removing contents of NIM lpp_source' + @suma.lpp_source + " : " + location)
+          Log.log_info('Removing contents of NIM lpp_source ' + @suma.lpp_source + ' : ' + location)
           FileUtils.rm_rf Dir.glob("#{location}/*")
+          Log.log_info('Removing NIM lpp_source ' + @suma.lpp_source)
+          Nim.remove_lpp_source(@suma.lpp_source)
         end
-        Log.log_info('Removing NIM lpp_source ' + @suma.lpp_source)
-        Log.log_info('nim -o remove')
-        nim('-o', 'remove', @suma.lpp_source)
       rescue Puppet::ExecutionFailure => e
-        Log.log_debug('nim Puppet::ExecutionFailure e=' + e.to_s)
+        Log.log_debug('NIM Puppet::ExecutionFailure e=' + e.to_s)
       end
     elsif resource[:ensure].to_s != 'absent'
-      begin
-        Log.log_info('lsnim')
-        lsnim('-l', @suma.lpp_source)
-      rescue Puppet::ExecutionFailure => e
-        Log.log_debug('lsnim Puppet::ExecutionFailure e=' + e.to_s)
+      exists = Nim.lpp_source_exists?(@suma.lpp_source)
+      if exists
+        Log.log_info('NIM lpp_source resource ' + @suma.lpp_source + ' already exists, suma steps not necessary.')
+        Log.log_info('You can force through \'force => "yes"\' a new suma download and new creation of NIM lpp_source resource.')
+      else
+        Log.log_info('NIM lpp_source resource ' + @suma.lpp_source + ' does not exists.')
         creation_done = false # this will trigger creation
       end
     end
@@ -76,7 +74,7 @@ lpp_source=\"#{resource[:lpp_source]}\" force=#{resource[:force]}.")
   #
   # ###########################################################################
   def create
-    Log.log_info("Provider suma create. Doing \"#{resource[:ensure]}\" \
+    Log.log_info("Provider suma 'create' method : doing \"#{resource[:ensure]}\" \
 for type=\"#{resource[:type]}\" into directory=\"#{resource[:root]}\" \
 from=\"#{resource[:from]}\" to \"#{resource[:to]}\" \
 lpp_source=\"#{resource[:lpp_source]}\".")
@@ -86,26 +84,35 @@ lpp_source=\"#{resource[:lpp_source]}\".")
     Log.log_info('lpp_source=' + @suma.lpp_source)
 
     # TODO : check if preview can be skipped if "step_to => :download"
-    Log.log_debug('suma.preview')
-    missing = @suma.preview
-    Log.log_debug('suma.preview missing=' + missing.to_s)
-    if missing
-      Log.log_debug('to_step=' + @suma.to_step.to_s)
-      if @suma.to_step.to_s == 'download'
-        Log.log_debug('suma.download')
-        downloaded = @suma.download
-        Log.log_debug('suma.download missing=' + missing.to_s)
+    Log.log_debug('Launching now suma.preview')
+    begin
+      missing = @suma.preview
+      Log.log_debug('suma.preview shows that missing=' + missing.to_s)
+      if missing
+        if @suma.to_step.to_s == 'download'
+          Log.log_debug('Launching now suma.download')
+          downloaded = @suma.download
+          Log.log_debug('downloaded=' + downloaded.to_s)
+        else
+          Log.log_debug('suma.download not necessary as only preview is required')
+        end
       else
-        Log.log_debug('not suma.download, only preview')
+        Log.log_debug('suma.download not necessary as preview shows nothing is missing ')
       end
-    end
+      #
+      exists = Nim.lpp_source_exists?(@suma.lpp_source)
+      if !exists
+        Log.log_debug('Nim.define_lpp_source')
+        Nim.define_lpp_source(@suma.lpp_source,
+                              @suma.dir_lpp_sources,
+                              'built by Puppet AixAutomation')
+      else
+        Log.log_info('NIM lpp_source resource ' + @suma.lpp_source + ' already exists, creation not done.')
+        Log.log_info('You can force through \'force => "yes"\' a new suma download and new creation of NIM lpp_source resource.')
+      end
 
-    if !missing || downloaded == 0
-      Log.log_debug('Nim.define_lpp_source')
-      Nim.define_lpp_source(@suma.lpp_source,
-                            @suma.dir_lpp_sources,
-                            'built by Puppet AixAutomation')
-      Log.log_debug('Nim.define_lpp_source')
+    rescue SumaPreviewError, SumaDownloadError => e
+      Log.log_err('Exception ' + e.to_s)
     end
 
     Log.log_debug('End of suma.create')
@@ -116,26 +123,25 @@ lpp_source=\"#{resource[:lpp_source]}\".")
   #
   # ###########################################################################
   def destroy
-    Log.log_info("Provider suma destroy. Doing \"#{resource[:ensure]}\" \
+    Log.log_info("Provider suma 'destroy' method : doing \"#{resource[:ensure]}\" \
 for type=\"#{resource[:type]}\" into directory=\"#{resource[:root]}\" \
 from=\"#{resource[:from]}\" to \"#{resource[:to]}\" \
 lpp_source=.\"#{resource[:lpp_source]}\".")
 
-    Log.log_info('dir_metadata=' + @suma.dir_metadata)
-    Log.log_info('dir_lpp_sources=' + @suma.dir_lpp_sources)
-    Log.log_info('lpp_source=' + @suma.lpp_source)
+    Log.log_debug('dir_metadata=' + @suma.dir_metadata)
+    Log.log_debug('dir_lpp_sources=' + @suma.dir_lpp_sources)
+    Log.log_debug('lpp_source=' + @suma.lpp_source)
 
-    Log.log_debug('Cleaning directories')
-    # TO BE DONE ON OPTION ?
+    Log.log_info('Cleaning directories' + @suma.dir_lpp_sources + ' and ' + @suma.dir_metadata)
     rm('-r', '-f', @suma.dir_lpp_sources)
     rm('-r', '-f', @suma.dir_metadata)
+    Log.log_debug('Cleaning directories done')
 
-    Log.log_debug('Cleaning directories')
-
-    Log.log_debug('Nim.remove_lpp_source')
+    Log.log_info('Removing NIM lpp_source resource ' + @suma.lpp_source)
     Nim.remove_lpp_source(@suma.lpp_source)
-    Log.log_debug('Nim.remove_lpp_source')
+    Log.log_debug('Removing NIM lpp_source resource done')
 
     Log.log_debug('End of suma.destroy')
   end
+
 end

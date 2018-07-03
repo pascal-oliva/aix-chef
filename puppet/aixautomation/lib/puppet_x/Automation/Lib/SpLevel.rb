@@ -125,15 +125,13 @@ module Automation
       # #######################################################################
       def self.validate_sp(key, value)
         returned = true
-        Log.log_debug('validating ' + key)
         lvl = Regexp.last_match(1) \
 if value.to_s =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})/
         if lvl.nil?
-          Log.log_err('"' + key +
-                          '" parameter must be under the WWWW-XX-YY-ZZZZ format')
+          Log.log_err('validation of "' + key + '" parameter failure : parameter must be under the WWWW-XX-YY-ZZZZ format')
           returned = false
         else
-          Log.log_debug(value + ' respects the WWW-XX-YY-ZZZZ format')
+          Log.log_debug('validation of "' + key + '" parameter ok : "' + value + '" respects the WWW-XX-YY-ZZZZ format')
         end
         returned
       end
@@ -147,13 +145,12 @@ if value.to_s =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})/
       # #######################################################################
       def self.validate_tl(key, value)
         returned = true
-        Log.log_debug('validating ' + key)
         lvl = Regexp.last_match(1) if value.to_s =~ /^([0-9]{4}-[0-9]{2})/
         if lvl.nil?
-          Log.log_err('"' + key + '" parameter must be under the WWWW-XX format')
+          Log.log_err('validation of "' + key + '" parameter failure : parameter must be under the WWWW-XX format')
           returned = false
         else
-          Log.log_debug(value + ' respects the WWW-XX format')
+          Log.log_debug('validation of "' + key + '" parameter ok : "' + value + '" respects the WWW-XX format')
         end
         returned
       end
@@ -168,17 +165,17 @@ if value.to_s =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})/
       # #######################################################################
       def self.validate_sp_tl(key, value)
         returned = true
-        Log.log_debug('validating ' + key)
         lvl1 = Regexp.last_match(1) if value.to_s =~ /^([0-9]{4}-[0-9]{2})/
         lvl2 = Regexp.last_match(1) if value.to_s =~ /^([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4})/
         if lvl1.nil? && lvl2.nil?
-          Log.log_err('"' + key + '" parameter must be either under the WWWW-XX \
+          Log.log_err('validation of "' + key + '" parameter failure : parameter must be either under the WWWW-XX \
 format or under the WWWW-XX-YY-ZZZZ format')
           returned = false
         else
-          Log.log_debug(value + ' respects the WWW-XX format') unless lvl1.nil?
-          unless lvl2.nil?
-            Log.log_debug(value + ' respects the WWW-XX-YY-ZZZZ format')
+          if lvl2.nil?
+            Log.log_debug('validation of "' + key + '" parameter ok : "' + value + '" respects the WWW-XX format') unless lvl1.nil?
+          else
+            Log.log_debug('validation of "' + key + '" parameter ok : "' + value + '" respects the WWW-XX-YY-ZZZZ format')
           end
         end
         returned
@@ -195,11 +192,11 @@ format or under the WWWW-XX-YY-ZZZZ format')
         returned = false
         sps_per_tl = Facter.value(:servicepacks)
         # take 7 first characters of sp and
-        Log.log_debug('sp=' + sp)
+        Log.log_debug('Checking the existence of sp="' + sp + '" against possible sp of this tl.')
         version = sp[0..6]
         # Log.log_debug('version=' + version)
         sps_of_tl = sps_per_tl[version]
-        Log.log_debug('Possible sps_of_tl[' + version + ']=' + sps_of_tl.to_s)
+        Log.log_debug('Possible sp of tl[' + version + '] are ' + sps_of_tl.to_s)
         if !sps_of_tl.nil?
           returned = true if sps_of_tl.include? sp
         else
@@ -218,8 +215,10 @@ format or under the WWWW-XX-YY-ZZZZ format')
       def self.tl_exists(tl)
         returned = false
         sps_per_tl = Facter.value(:servicepacks)
+        Log.log_debug('Checking the existence of tl="' + tl + '" against possible tl.')
         # take 7 first characters of sp and
         technical_levels = sps_per_tl.keys
+        Log.log_debug('Possible tl are ' + technical_levels.to_s)
         returned = true if technical_levels.include? tl
         returned
       end
@@ -227,16 +226,18 @@ format or under the WWWW-XX-YY-ZZZZ format')
       # #######################################################################
       # name : sp_tl_exists
       # param : input:sp_tl:string
-      #   either a technical level string for example 7100-02
-      #   or     a service pack level string for example 7100-01-06-1241
+      #   either a service pack level string for example 7100-01-06-1241
+      #   or     a technical level string for example 7100-02
       # return : true if sp exists or tl exists, false otherwise
       # description : does this SP or TL exists either as a data TL
       #   or as a data SP.
       #  Check is done against sp_per_tl.yml.
       # #######################################################################
       def self.sp_tl_exists(sp_tl)
-        returned = SpLevel.tl_exists(sp_tl)
-        returned ||= SpLevel.sp_exists(sp_tl)
+        returned = SpLevel.sp_exists(sp_tl)
+        unless returned
+          returned ||= SpLevel.tl_exists(sp_tl)
+        end
         returned
       end
     end # SpLevel

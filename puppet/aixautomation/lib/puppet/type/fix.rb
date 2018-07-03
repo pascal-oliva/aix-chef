@@ -26,7 +26,7 @@ Puppet::Type.newtype(:fix) do
 
   # ###########################################################################
   # Only valid targets are kept, targets need to be pingable,
-  #  accessible thru c_rsh, in a proper NIM state
+  #  accessible through c_rsh, in a proper NIM state
   # ###########################################################################
   newparam(:targets) do
     desc '"targets" parameter: list of lpar or vios on which to perform action'
@@ -80,8 +80,8 @@ Puppet::Type.newtype(:fix) do
   # ############################################################################
   #
   # ############################################################################
-  newparam(:clean) do
-    desc '"clean" parameter possible values: "yes" or "no"'
+  newparam(:force) do
+    desc '"force" parameter possible values: "yes" or "no"'
     defaultto :yes
     newvalues(:yes, :no)
   end
@@ -98,14 +98,11 @@ Puppet::Type.newtype(:fix) do
     raise('"root" needs to be set if "ensure=>present"') \
       if self[:ensure] == 'present' && (self[:root].nil? || self[:root].empty?)
     #
-    # what is done here : if ensure=absent and clean==yes and root==null then failure
-    raise('"root" needs to be set if "ensure=>absent" and "clean=>yes"') \
-      if self[:ensure] == 'absent' && self[:clean] == 'yes' &&
-        (self[:root].nil? || self[:root].empty?)
+    # what is done here : if ensure=absent and force==yes and root==null then failure
+    raise('"root" needs to be set if "ensure=>absent" and "force=>yes"') \
+      if self[:ensure] == 'absent' && self[:force] == 'yes' && (self[:root].nil? || self[:root].empty?)
     #
-    # what is done here : if clean, than clean yml files and nim resources
-    if self[:clean] == 'yes'
-      clean
-    end
+    # what is done here : if force, than clean yml files and nim resources
+    clean if self[:force] == 'yes'
   end
 end
