@@ -639,7 +639,7 @@ module AIX
               date_m = Regexp.last_match(4)
               date_s = Regexp.last_match(5)
               dp = Date.parse(line)
-              pkg_date = dp.year.to_s + '%02d'%dp.mon.to_s + '%02d'%dp.mday.to_s + date_h + date_m + date_s
+              pkg_date = dp.year.to_s + format('%02d',dp.mon) + format('%02d',dp.mday) + date_h + date_m + date_s
             end
           end
         end
@@ -654,7 +654,6 @@ module AIX
       # -----------------------------------------------------------------
       def efix_sort_by_packaging_date(lpp_source_dir, filesets)
         pkg_date_h = {}
-        pkg_date_sorted_h = {}
         efixes_t = []
         filesets.each do |fileset|
           begin
@@ -663,7 +662,7 @@ module AIX
             log_debug("efix_sort_by_packaging_date -> get_pkg_date Error: #{e}")
           end
         end
-        pkg_date_sorted_h = pkg_date_h.sort_by { |_fileset, date| date }
+        pkg_date_h.sort_by! { |_fileset, date| date }
         pkg_date_sorted_h.each do |key, _value|
           efixes_t << key
         end
