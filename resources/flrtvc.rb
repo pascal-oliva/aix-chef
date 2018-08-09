@@ -430,7 +430,7 @@ action :patch do
   puts ''
 
   # create directory based on date/time
-#  base_dir = ::File.join(Chef::Config[:file_cache_path], Time.now.to_s.gsub(/[:\s-]/, '_'))
+  #  base_dir = ::File.join(Chef::Config[:file_cache_path], Time.now.to_s.gsub(/[:\s-]/, '_'))
   base_dir = path
   ::FileUtils.mkdir_p(base_dir)
 
@@ -493,7 +493,7 @@ action :patch do
 
     # copy efix
     efixes_basenames = []
-    sort_byDate_efixes_basenames = []
+    sort_efixes_basenames = []
     efixes.each do |efix|
       # build the efix basenames array
       basename = efix['Filename'].split('/')[-1]
@@ -554,8 +554,8 @@ action :patch do
         nim = Nim.new
         nim.define_lpp_source(lpp_source, lpp_source_base_dir) unless nim.exist?(lpp_source)
         begin
-          sort_byDate_efixes_basenames = nim.efix_sort_by_packaging_date(lpp_source_dir, efixes_basenames)
-          nim.perform_efix_customization(lpp_source, m, sort_byDate_efixes_basenames.join(' '))
+          sort_efixes_basenames = nim.efix_sort_by_packaging_date(lpp_source_dir, efixes_basenames)
+          nim.perform_efix_customization(lpp_source, m, sort_efixes_basenames.join(' '))
         rescue NimCustError => e
           STDERR.puts e.message
           Chef::Log.warn("[#{m}] Failed installing some efixes. See /var/adm/ras/emgr.log on #{m} for details")

@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-
-
 module AIX
   module PatchMgmt
     include Chef::Mixin::ShellOut
@@ -257,7 +255,7 @@ module AIX
 
     class MirrorError < StandardError
     end
-    
+
     class CmdError < StandardError
     end
 
@@ -610,7 +608,7 @@ module AIX
         puts "Finish patching #{vios}."
         raise NimCustError, "Error: Command \"#{nim_s}\" returns above error!" unless exit_status.success?
       end
-            
+
       # -----------------------------------------------------------------
       # Get packaging date from fileset
       #   master, and get their cstate.
@@ -619,7 +617,7 @@ module AIX
       #    20180809050125 for "Thu Aug  9 05:01:25 CDT 2018"
       #    raise CmdError in case of error
       # -----------------------------------------------------------------
-      def get_pkg_date (lpp_source_dir, fileset)
+      def get_pkg_date(lpp_source_dir, fileset)
         pkg_date = ''
         cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'PACKAGING DATE' | /bin/cut -c16-"
         log_debug("get_pkg_date: #{cmd_s}")
@@ -641,18 +639,18 @@ module AIX
               date_m = Regexp.last_match(4)
               date_s = Regexp.last_match(5)
               dp = Date.parse(line)
-              pkg_date = dp.year.to_s+ "%02d" %  dp.mon.to_s+ "%02d" % dp.mday.to_s+ date_h + date_m+date_s
+              pkg_date = dp.year.to_s + '%02d'%dp.mon.to_s + '%02d'%dp.mday.to_s + date_h + date_m + date_s
             end
           end
         end
         log_debug("get_pkg_date for: #{lpp_source_dir}/#{fileset} => #{pkg_date}")
         pkg_date
       end
-      
+
       # -----------------------------------------------------------------
       # Sort fileset list by packaging date
-      #  
-      #    return sorted list of fileset 
+      #
+      #    return sorted list of fileset
       # -----------------------------------------------------------------
       def efix_sort_by_packaging_date(lpp_source_dir, filesets)
         pkg_date_h = {}
@@ -665,8 +663,8 @@ module AIX
             log_debug("efix_sort_by_packaging_date -> get_pkg_date Error: #{e}")
           end
         end
-        pkg_date_sorted_h = pkg_date_h.sort_by { |fileset, date| date }
-        pkg_date_sorted_h.each do |key, value|
+        pkg_date_sorted_h = pkg_date_h.sort_by { |_fileset, date| date }
+        pkg_date_sorted_h.each do |key, _value|
           efixes_t << key
         end
         efixes_t.reverse!
