@@ -639,7 +639,7 @@ module AIX
               date_m = Regexp.last_match(4)
               date_s = Regexp.last_match(5)
               dp = Date.parse(line)
-              pkg_date = dp.year.to_s + format('%02d',dp.mon) + format('%02d',dp.mday) + date_h + date_m + date_s
+              pkg_date = dp.year.to_s + format('%02d', dp.mon) + format('%02d', dp.mday) + date_h + date_m + date_s
             end
           end
         end
@@ -663,7 +663,7 @@ module AIX
           end
         end
         pkg_date_h.sort_by! { |_fileset, date| date }
-        pkg_date_sorted_h.each do |key, _value|
+        pkg_date_h.each do |key, _value|
           efixes_t << key
         end
         efixes_t.reverse!
