@@ -647,12 +647,12 @@ module AIX
         pkg_date
       end
 
-     #-----------------------------------------------------------------
-     # Sort fileset list by packaging date
-     #
-     #    return sorted list of fileset
-     #-----------------------------------------------------------------
-     def efix_sort_by_packaging_date(lpp_source_dir, filesets)
+      #-----------------------------------------------------------------
+      # Sort fileset list by packaging date
+      #
+      #    return sorted list of fileset
+      #-----------------------------------------------------------------
+      def efix_sort_by_packaging_date(lpp_source_dir, filesets)
         pkg_date_h = {}
         pkg_date_sorted_h = {}
         efixes_t = []
