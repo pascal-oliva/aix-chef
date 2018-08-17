@@ -1898,7 +1898,7 @@ module AIX
         wait_thr.value # Process::Status object returned.
       end
       raise EmgrListError, "Error: Command \"#{emgr_s}\" returns above error!" unless exit_status.success?
-      array_locked.delete_if{ |item| item.nil? || item.empty? }
+      array_locked.delete_if { |item| item.nil? || item.empty? }
       array_locked
     end
 
