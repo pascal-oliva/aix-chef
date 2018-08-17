@@ -494,6 +494,8 @@ action :patch do
     # copy efix
     efixes_basenames = []
     sort_efixes_basenames = []
+    list_pkg_name = {}
+
     efixes.each do |efix|
       # build the efix basenames array
       basename = efix['Filename'].split('/')[-1]
@@ -555,7 +557,74 @@ action :patch do
         nim.define_lpp_source(lpp_source, lpp_source_base_dir) unless nim.exist?(lpp_source)
         begin
           sort_efixes_basenames = nim.efix_sort_by_packaging_date(lpp_source_dir, efixes_basenames)
-          nim.perform_efix_customization(lpp_source, m, sort_efixes_basenames.join(' '))
+          locked_pkg = []
+          list_pkg_name = {}
+          #get locked package from client
+          locked_pkg = nim.get_locked_packages(m)
+          Chef::Log.debug("Locked package list for client [#{m}]: #{locked_pkg}")
+          #get package name from efix list
+          list_pkg_name = nim.get_efix_packaging_name(lpp_source_dir, sort_efixes_basenames)
+          list_pkg_name_copy = list_pkg_name.dup
+          Chef::Log.debug("Package list name: #{list_pkg_name}")
+          #remove efix from list if package is locked
+          locked_pkg.each do | item |
+            list_pkg_name.delete_if { |k,v| v.include?(item) }
+          end
+          #remove efix with package name doublon
+          unlock_efixes_basenames = {}
+          list_pkg_name.each do |k,v|
+            unlock_efixes_basenames.merge!({k=>v})
+            del_key = []
+            list_pkg_name.delete(k)
+            v.each do | item |
+              list_pkg_name.each do |ky,va|
+                del_key << ky if va.include?(item)
+              end
+              list_pkg_name.delete_if { |kk,vv| del_key.include?(kk) }
+            end
+          end
+          #next if efix list to apply is empty
+          if unlock_efixes_basenames.keys.empty?
+            msg1 = "[#{m}] Have #{urls.size} vulnerabilities but no installion will be done due to locked packages"
+            msg2 = "[#{m}] Use force option to locked packages before update"
+            Chef::Log.warn(msg1)
+            Chef::Log.warn(msg2)
+            puts msg1
+            puts msg2
+            next
+          end
+          #check if conflict detected to log message
+          unlock_efixes_basenames.each do |key,_|
+            list_pkg_name_copy.delete(key)
+          end
+          if list_pkg_name_copy.length > 0
+            msg = "[#{m}] Some Efix will not be installed due to a conflict on packages"
+            Chef::Log.warn(msg)
+            puts msg
+            if locked_pkg.length > 0
+              puts "\t[#{m}]Locked packages:"
+              puts "\t"+locked_pkg.join("\n\t")
+              puts "\n\tUse force option to remove locked packages before update"
+            end
+            msg1 = "\tEFix\t=>    Packages   "
+            msg2 = "\t------------------------"
+            Chef::Log.warn(msg1)
+            Chef::Log.warn(msg2)
+            puts msg1
+            puts msg2
+            list_pkg_name_copy.each do |k,v|
+              msg1 = "\t#{format("%s",k)}"
+              Chef::Log.warn(msg1)
+              puts msg1
+              v.each do | item |
+                msg2 = "\t\t\t=>#{format("%s",item)}"
+                Chef::Log.warn(msg2)
+                puts msg2
+              end
+            end
+          end
+          #perform efix installation
+          nim.perform_efix_customization(lpp_source, m, unlock_efixes_basenames.keys.join(' '))
         rescue NimCustError => e
           STDERR.puts e.message
           Chef::Log.warn("[#{m}] Failed installing some efixes. See /var/adm/ras/emgr.log on #{m} for details")
