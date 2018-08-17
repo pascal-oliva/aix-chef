@@ -673,7 +673,7 @@ module AIX
       #    raise CmdError in case of error
       # -----------------------------------------------------------------
       def get_pkg_name(lpp_source_dir, fileset)
-        pkg_names = [ ]
+        pkg_names = []
         cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'PACKAGE:' | /bin/cut -c16-"
         log_debug("get_pkg_name: #{cmd_s}")
         Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
@@ -704,7 +704,6 @@ module AIX
       #-----------------------------------------------------------------
       def get_efix_packaging_name(lpp_source_dir, filesets)
         pkg_name_h = {}
-        pkg_name_t = []
         filesets.each do |fileset|
           begin
             pkg_name_h[fileset] = get_pkg_name(lpp_source_dir, fileset)
@@ -712,7 +711,7 @@ module AIX
             log_debug("get_efix_packaging_name -> get_pkg_name Error: #{e}")
           end
         end
-      pkg_name_h
+        pkg_name_h
       end
 
       # -----------------------------------------------------------------
@@ -1879,7 +1878,7 @@ module AIX
     #
     #    raise EmgrListError in case of error
     # -----------------------------------------------------------------
-     def get_locked_packages(machine)
+    def get_locked_packages(machine)
       array_locked = []
       emgr_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{machine} \"/usr/sbin/emgr -P\""
       log_debug("EMGR listing package locks: #{emgr_s}")
