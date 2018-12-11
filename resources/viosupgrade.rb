@@ -102,13 +102,10 @@ end
 #    raise ViosUpgradeConfFileError in case of error
 # -----------------------------------------------------------------
 def check_viosupgrade_file(path_file)
-
   unless ::File.exist?(path_file)
     msg = "Error: viosupgrade config file '#{path_file}': not found"
     raise ViosUpgradeConfFileError, msg
   end
-
-#TODO function to validate the format
   0
 end
 
@@ -142,8 +139,6 @@ def check_resource_location(resource)
 
   # check to make sure path exists
   raise ViosResourceBadLocation, "Cannot find location='#{location}' of resource='#{resource}'" unless ::File.exist?(location)
-
-  #TODO test empty location
   ret
 end
 
@@ -175,7 +170,7 @@ def get_spot_from_mksysb(resource)
   raise ViosUpgradeBadProperty, "Cannot find extracted_spot of resource='#{resource}': Command '#{cmd_s}' returns above error." unless exit_status.success?
 
   # check to make sure spot exists
-  raise ViosResourceBadResource, "Cannot find extracted_spot='#{spot}' of resource='#{resource}'" unless  !shell_out("lsnim -l #{spot}").error?
+  raise ViosResourceBadResource, "Cannot find extracted_spot='#{spot}' of resource='#{resource}'" if  shell_out("lsnim -l #{spot}").error?
   spot
 end
 
@@ -345,6 +340,7 @@ end
 #
 #    return the command string to pass to run_viosupgrade()
 #
+# rubocop:disable Metrics/ParameterLists
 # -----------------------------------------------------------------
 def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, altdisk, resources, common_resources, preview, upg_altdisk)
   cmd = '/usr/sbin/viosupgrade '
