@@ -1818,8 +1818,6 @@ module AIX
       # -----------------------------------------------------------------
       def get_altinst_rootvg_disk(nim_vios, vios, altdisk_hash)
         ret = 0
-
-
         begin
           get_pvs(nim_vios, vios)
         rescue ViosCmdError => e
