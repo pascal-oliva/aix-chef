@@ -1185,6 +1185,7 @@ module AIX
       #   -1  if the viosupgrade operation timed out
       #
       #    raise ViosUpgradeQueryError if cannot get viosupgrade status
+      # rubocop:disable Style/GuardClause
       # -----------------------------------------------------------------
       def wait_viosupgrade(nim_vios, vios, check_count = 360, sleep_time = 10)
         count = 0
@@ -1228,8 +1229,6 @@ module AIX
           when -1
             # error detected
             return 1
-          else
-            # continue
           end
           if wait_time.modulo(60) == 0
             msg = "Waiting VIOSUPGRADE on #{vios}... duration: #{wait_time / 60} minute(s)"
@@ -2046,7 +2045,7 @@ module AIX
       log_info('Into get_locked_files (target=' + target + ')')
       locked_files = []
       locked_labels = []
-      #get efix label already installed
+      # get efix label already installed
       emgr_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{target} \"/usr/sbin/emgr -P\""
       log_info("EMGR efix already install: #{emgr_s}")
       exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, emgr_s) do |_stdin, stdout, stderr, wait_thr|
@@ -2068,7 +2067,7 @@ module AIX
       locked_labels.uniq!
       log_info("get_locked_files : get labels for: #{target} => #{locked_labels}")
       locked_labels.each do |label|
-        files = get_efix_files(target,label)
+        files = get_efix_files(target, label)
         files.each do |file|
           locked_files << file
         end
@@ -2549,6 +2548,7 @@ module AIX
       log_info("List of altdisk: #{altdisk_hash}")
       selected_vios
     end
+
     # -----------------------------------------------------------------
     # Buidl installdisk regarding the target vios pair list parameter
     #
@@ -2632,13 +2632,12 @@ module AIX
         if tuple_len == 2
           installdisk_hash[tuple_elts[1]] = hd_tuple_elts[1].delete(' ')
         end
-
         hd_tuple_index += 1
       end
-
       log_info("List of install disks: #{installdisk_hash}")
       installdisk_hash
     end
+
     # -----------------------------------------------------------------
     # Buidl resources regarding the target vios pair list parameter
     #
@@ -2725,10 +2724,8 @@ module AIX
 
         rs_tuple_index += 1
       end
-
       log_info("List of resources: #{resource_hash}")
       resource_hash
     end
-
   end # module PatchMgmt
 end # module AIX
