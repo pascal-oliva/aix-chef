@@ -341,6 +341,7 @@ end
 #    return the command string to pass to run_viosupgrade()
 #
 # rubocop:disable Metrics/ParameterLists
+# rubocop:disable Style/IfInsideElse
 # -----------------------------------------------------------------
 def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, altdisk, resources, common_resources, preview, upg_altdisk)
   cmd = '/usr/sbin/viosupgrade '
