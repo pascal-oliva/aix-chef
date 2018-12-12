@@ -481,11 +481,11 @@ def get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_statu
     # check if cluster defined
     begin
       nim_vios[vios]['ssp_id'] = get_ssp_name_id(nim_vios, vios)
-      #cluster found
+      # cluster found
       log_info("[VIOS CLUSTER ID] #{nim_vios[vios]['ssp_id']}")
     rescue ViosNoClusterFound => e
-       msg = "No cluster found: #{e.message} => continue to upgrade"
-       log_info(msg)
+      msg = "No cluster found: #{e.message} => continue to upgrade"
+      log_info(msg)
       return 0 # no cluster found => continue to upgrade
     end
 
@@ -688,10 +688,10 @@ action :upgrade do
   altdisk_hash = {}
   target_list = expand_vios_pair_targets(new_resource.targets, nim_vios.keys, new_resource.altdisks, altdisk_hash)
 
-  #build installdisks
+  # build installdisks
   installdisk_hash = build_installdisks(new_resource.targets, nim_vios.keys, new_resource.installdisks)
 
-  #build resources
+  # build resources
   resource_hash = build_resources(new_resource.targets, nim_vios.keys, new_resource.resources)
 
   # check vioshc script is executable
@@ -713,7 +713,6 @@ action :upgrade do
       vios_key = vios1
       vios2 = nil
     end
-
 
     ###############
     # health_check
@@ -909,24 +908,24 @@ action :upgrade do
       log_info("VIOS UPGRADE - mksysb resource=#{new_resource.ios_mksysb_name}")
       log_info("VIOS UPGRADE - preview=#{new_resource.preview}")
 
-       # check SSP status of the tuple
-       # Upgrade can only be done when Current Vios is UP and Vios Dual is UP
-       # or if current vios is DOWN
-       ret = 0
-       begin
-         ret = get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_status)
-       rescue ViosCmdError => e
-         put_error(e.message)
-         targets_status[vios_key] = 'FAILURE-VALIDATE'
-         log_info("Upgrade status for #{vios_key}: #{targets_status[vios_key]}")
-         next # cannot continue - switch to next tuple
-        end
-        if ret == 1
-          put_warn("Upgrade operation for #{vios_key} vioses skipped due to bad SSP status")
-          put_info('Upgrade operation can be done if both of the VIOSes have the SSP status = UP')
-          targets_status[vios_key] = 'FAILURE-VALIDATE'
-          next # switch to next tuple
-        end
+      # check SSP status of the tuple
+      # Upgrade can only be done when Current Vios is UP and Vios Dual is UP
+      # or if current vios is DOWN
+      ret = 0
+      begin
+        ret = get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_status)
+      rescue ViosCmdError => e
+        put_error(e.message)
+        targets_status[vios_key] = 'FAILURE-VALIDATE'
+        log_info("Upgrade status for #{vios_key}: #{targets_status[vios_key]}")
+        next # cannot continue - switch to next tuple
+      end
+      if ret == 1
+        put_warn("Upgrade operation for #{vios_key} vioses skipped due to bad SSP status")
+        put_info('Upgrade operation can be done if both of the VIOSes have the SSP status = UP')
+        targets_status[vios_key] = 'FAILURE-VALIDATE'
+        next # switch to next tuple
+      end
 
       vios_list.each do |vios|
 
