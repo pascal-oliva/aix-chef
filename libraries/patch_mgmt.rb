@@ -63,7 +63,7 @@ module AIX
       disks = {}
       cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{vios} \"/usr/ios/cli/ioscli lspv -free\""
 
-      Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+      Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
         stderr.each_line do |line|
           STDERR.puts line
           log_info("[STDERR] #{line.chomp}")
@@ -244,6 +244,9 @@ module AIX
     class ViosCmdError < StandardError
     end
 
+    class ViosUpgradeQueryError < StandardError
+    end
+
     class AltDiskFindError < StandardError
     end
 
@@ -369,7 +372,7 @@ module AIX
       def metadata
         suma_s = @suma_s + ' -a Action=Metadata'
         log_debug("SUMA metadata operation: #{suma_s}")
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
           stdout.each_line do |line|
             log_info("[STDOUT] #{line.chomp}")
           end
@@ -388,7 +391,7 @@ module AIX
         suma_s = @suma_s + ' -a Action=Preview'
         log_debug("SUMA preview operation: #{suma_s}")
         do_not_error = false
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
           stdout.each_line do |line|
             @dl = Regexp.last_match(1).to_f / 1024 / 1024 / 1024 if line =~ /Total bytes of updates downloaded: ([0-9]+)/
             @downloaded = Regexp.last_match(1) if line =~ /([0-9]+) downloaded/
@@ -420,7 +423,7 @@ module AIX
         download_failed = 0
         download_skipped = 0
         puts "Start downloading #{@downloaded} fixes (~ #{@dl.to_f.round(2)} GB) to '#{@dl_target}' directory."
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, suma_s) do |_stdin, stdout, stderr, wait_thr|
           thr = Thread.new do
             start = Time.now
             loop do
@@ -506,7 +509,7 @@ module AIX
         log_debug("NIM asynchronus cust operation: #{nim_s}")
         puts "\nStart updating machine(s) '#{clients}' to #{lpp_source}."
         do_not_error = false
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
           stdout.each_line do |line|
             do_not_error = true if line =~ /Either the software is already at the same level as on the media, or/
             log_info("[STDOUT] #{line.chomp}")
@@ -527,7 +530,7 @@ module AIX
         log_debug("NIM synchronous cust operation: #{nim_s}")
         puts "Start updating machine(s) '#{clients}' to #{lpp_source}."
         do_not_error = false
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
           stdout.each_line do |line|
             print "\033[2K\r#{line.chomp}" if line =~ /^Filesets processed:.*?[0-9]+ of [0-9]+/
             print "\033[2K\r#{line.chomp}" if line =~ /^Finished processing all filesets./
@@ -549,7 +552,7 @@ module AIX
         nim_s = "/usr/sbin/nim -o cust -a lpp_source=#{lpp_source} -a filesets='#{filesets}' #{client}"
         log_debug("NIM install efixes cust operation: #{nim_s}")
         puts "Start patching machine(s) '#{client}'."
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
           thr = Thread.new do
             loop do
               print '.'
@@ -581,7 +584,7 @@ module AIX
         nim_s = "/usr/sbin/nim -o updateios -a preview=no -a lpp_source=#{lpp_source} #{vios}"
         log_debug("NIM updateios operation: #{nim_s}")
         puts "Start patching machine(s) '#{vios}'."
-        exit_status = Open3.popen3({ 'LANG' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, nim_s) do |_stdin, stdout, stderr, wait_thr|
           thr = Thread.new do
             loop do
               print '.'
@@ -620,7 +623,7 @@ module AIX
         pkg_date = ''
         cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'PACKAGING DATE' | /bin/cut -c16-"
         log_debug("get_pkg_date: #{cmd_s}")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -645,11 +648,11 @@ module AIX
         pkg_date
       end
 
-      #-----------------------------------------------------------------
+      # -----------------------------------------------------------------
       # Sort fileset list by packaging date
       #
       #    return sorted list of fileset
-      #-----------------------------------------------------------------
+      # -----------------------------------------------------------------
       def efix_sort_by_packaging_date(lpp_source_dir, filesets)
         pkg_date_h = {}
         efixes_t = []
@@ -667,51 +670,67 @@ module AIX
       end
 
       # -----------------------------------------------------------------
-      # Get package name from fileset
+      # name : get_fileset_files_loc
+      # param : input:lpp_source_dir:string
+      # param : input:fileset:string
       #
-      #    return packaging name
+      # return array of packaging names
+      # description : get package names impacted from specific fileset
       #    raise CmdError in case of error
       # -----------------------------------------------------------------
-      def get_pkg_name(lpp_source_dir, fileset)
-        pkg_names = []
-        cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'PACKAGE:' | /bin/cut -c16-"
-        log_debug("get_pkg_name: #{cmd_s}")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+      def get_fileset_files_loc(lpp_source_dir,
+                                fileset)
+        log_debug('Into get_fileset_files_loc' +
+                          ', lpp_source_dir=' +
+                          lpp_source_dir +
+                          ', fileset=' +
+                          fileset)
+        loc_files = []
+        cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'LOCATION:' | /bin/cut -c17-"
+        log_info("get_fileset_files_loc: #{cmd_s}")
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
-            STDERR.puts line
-            log_info("[STDERR] #{line.chomp}")
+            log_debug("[STDERR] #{line.chomp}")
           end
           unless wait_thr.value.success?
-            stdout.each_line { |line| log_info("[STDOUT] #{line.chomp}") }
+            stdout.each_line { |line| log_debug("[STDOUT] #{line.chomp}") }
             raise CmdError, "Error: Command \"#{cmd_s}\" returns above error!"
           end
-
           stdout.each_line do |line|
-            log_info("[STDOUT] #{line.chomp}")
-            # match "  devices.pciex.df1060e214103404.com"
-            next unless line =~ /^\s*(\S*[.]\S*)\s*$/
-            pkg_names << Regexp.last_match(1)
+            log_debug("[STDOUT] #{line.chomp}")
+            next unless line.include?('/')
+            loc_files << line.strip
           end
         end
-        log_debug("get_pkg_names for: #{lpp_source_dir}/#{fileset} => #{pkg_names}")
-        pkg_names
+        loc_files.uniq!
+        log_info("get_fileset_files_loc for: #{lpp_source_dir}/#{fileset} => #{loc_files}")
+        loc_files
       end
 
-      #-----------------------------------------------------------------
-      # get hash table package names from fileset list
+      # -----------------------------------------------------------------
+      # name : get_efix_files_loc
+      # param : input:lpp_source_dir:string
+      # param : input:filesets:array
       #
-      #    return sorted list of fileset
-      #-----------------------------------------------------------------
-      def get_efix_packaging_name(lpp_source_dir, filesets)
-        pkg_name_h = {}
+      # return hash table locked files (key = fileset)
+      # description : get impacted location files from fileset list
+      # -----------------------------------------------------------------
+      def get_efix_files_loc(lpp_source_dir,
+                                   filesets)
+        log_info('Into get_efix_files_loc' +
+                          ', lpp_source_dir=' +
+                          lpp_source_dir +
+                          ', filesets=' +
+                          filesets.to_s)
+        loc_files_h = {}
         filesets.each do |fileset|
           begin
-            pkg_name_h[fileset] = get_pkg_name(lpp_source_dir, fileset)
+            loc_files_h[fileset] = get_fileset_files_loc(lpp_source_dir, fileset)
           rescue CmdError => e
-            log_debug("get_efix_packaging_name -> get_pkg_name Error: #{e}")
+            log_info("get_efix_files_loc -> get_fileset_files_loc Error: #{e}")
           end
         end
-        pkg_name_h
+        loc_files_h
       end
 
       # -----------------------------------------------------------------
@@ -727,7 +746,7 @@ module AIX
         obj_key = ''
         cmd_s = '/usr/sbin/lsnim -t cec -l'
         log_debug("get_cecs_info: #{cmd_s}")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -774,7 +793,7 @@ module AIX
         obj_key = ''
         cmd_s = '/usr/sbin/lsnim -t hmc -l'
         log_debug("get_hmc_info: #{cmd_s}")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -840,7 +859,7 @@ module AIX
         obj_key = ''
         cmd_s = "/usr/sbin/lsnim -t #{lpar_type} -l"
         log_debug("get_nim_clients_info: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -902,7 +921,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/sbin/unmirrorvg #{vg_name} 2>&1 \""
 
         log_info("perform_unmirror: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, _stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, _stderr, wait_thr|
           stdout.each_line do |line|
             STDOUT.puts line
             log_info("[STDOUT] #{line.chomp}")
@@ -940,7 +959,7 @@ module AIX
           cmd_s += ' 2>&1'
 
           log_info("perform_mirror: '#{cmd_s}'")
-          Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, _stderr, wait_thr|
+          Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, _stderr, wait_thr|
             stdout.each_line do |line|
               STDOUT.puts line
               log_info("[STDERR] #{line.chomp}")
@@ -1003,7 +1022,7 @@ module AIX
       #    1   if the alt_disk_install operation failed
       #    -1  if the alt_disk_install operation timed out
       #
-      #    raise NimLparInfoError if cannot get NIM state
+      #    raise NimLparInfoError if cannot get NIM state+
       # -----------------------------------------------------------------
       def wait_alt_disk_install(vios, check_count = 180, sleep_time = 10)
         nim_info_prev = '___' # this info should not appears in nim info attribute
@@ -1020,7 +1039,7 @@ module AIX
           nim_result = ''
           nim_info = ''
 
-          Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+          Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
             stderr.each_line do |line|
               STDERR.puts line
               log_info("[STDERR] #{line.chomp}")
@@ -1082,6 +1101,158 @@ module AIX
         put_error(msg)
         -1
       end
+
+      # -----------------------------------------------------------------
+      # check if viosupgrade is finish
+      #
+      #    return 0 if finish
+      #    return 1 if not finish
+      #    return -1 if error detected
+      #    raise ViosUpgradeQueryError in case of error
+      # -----------------------------------------------------------------
+      def viosupgrade_query_status(vios)
+        rc = 1
+        nb_check = 0
+        #cmd_s = "/usr/sbin/viosupgrade -q -n #{vios}"
+        cmd_s = "/usr/sbin/lsnim -l #{vios}"
+        err_info = false
+        log_info("viosupgrade_query_status: '#{cmd_s}'")
+        exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+         stdout.each_line do |line|
+          log_info("[STDOUT] #{line.chomp}")
+          line.chomp!
+          line.strip!
+          nb_check += 1 if line =~ /^Cstate\s+=\s+ready for a NIM operation$/
+          nb_check += 1 if line =~ /^Mstate\s+=\s+ready for use$/
+          nb_check += 1 if line =~ /^Mstate\s+=\s+currently running$/
+          nb_check += 1 if line =~ /^Cstate_result\s+=\s+success$/
+          nb_check -= 1 if line =~ /^info\s+=/
+          err_info = true if line =~ /^err_info\s+=/
+         end
+         stderr.each_line do |line|
+          STDERR.puts line
+          log_info("[STDERR] #{line.chomp}")
+         end
+         wait_thr.value # Process::Status object returned.
+        end
+        raise ViosUpgradeQueryError, "viosupgrade_query_status: #{cmd_s}' returns above error." unless exit_status.success?
+        rc = 0 if nb_check == 3
+        rc = -1 if err_info
+        rc
+      end
+
+      # -----------------------------------------------------------------
+      # get cluster status
+      #
+      #
+      #    Raise ViosCmdError in case of command error
+      # -----------------------------------------------------------------
+      def get_cluster_status(nim_vios, vios)
+        rc =1
+        cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli cluster -status -fmt :\""
+        log_info("get_cluster_status: '#{cmd_s}'")
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+          stderr.each_line do |line|
+            STDERR.puts line
+            log_info("[STDERR] #{line.chomp}")
+          end
+          unless wait_thr.value.success?
+            stdout.each_line { |line| log_info("[STDOUT] #{line.chomp}") }
+            msg = "Failed to get cluster status on #{vios}, command \"#{cmd_s}\" returns above error!"
+            raise ViosCmdError, msg
+          end
+          # stdout is like:
+          # p7juf_cluster:OK:p7jufv1:8205-E6C020686AFR:1:OK:OK
+          # p7juf_cluster:OK:p7jufv2:8205-E6C020686AFR:7:OK:OK
+          stdout.each_line do |line|
+            log_debug("[STDOUT] #{line.chomp}")
+            line.chomp!
+            line.strip!
+            if line =~ /^(\S+):(\S+):(\S+):(\S+):(\d+):(\S+):(.*)/
+              if Regexp.last_match(6) == 'DOWN' || Regexp.last_match(7) == 'DOWN'
+                rc = 1
+              else
+                rc = 0
+              end
+            end
+          end
+        end
+        rc
+      end
+
+      # -----------------------------------------------------------------
+      # Wait for viosupgrade operation to finish
+      #
+      # when viosupgrade operation ends the NIM object state changes
+      #
+      # You migh want a timeout of 60 minutes (count=360, sleep=10s)
+      #
+      #    Return
+      #    0   if the viosupgrade operation ends with success
+      #    1   if the viosupgrade operation failed
+      #   -1  if the viosupgrade operation timed out
+      #
+      #    raise ViosUpgradeQueryError if cannot get viosupgrade status
+      # -----------------------------------------------------------------
+      def wait_viosupgrade(nim_vios, vios, check_count = 360, sleep_time = 10)
+
+        count = 0
+        wait_time = 0
+
+        log_info("wait_viosupgrade for vios: '#{vios}'")
+        upgrade_status_ok = false
+        st_upg = -2
+        st_clust = -2
+
+        while count <= check_count
+          sleep(sleep_time)
+          wait_time += 10
+
+          unless upgrade_status_ok
+            begin
+              st_upg = viosupgrade_query_status(vios)
+              log_info("viosupgrade succeded for vios: '#{vios}'") if st_upg == 0
+            rescue ViosUpgradeQueryError => e
+              msg = "viosuprade status error: #{e.message}"
+              put_error(msg)
+            end
+          end
+          case st_upg
+          when 0
+            upgrade_status_ok = true
+            #if Cluster defined - check the if the clsuter is restarted if exist
+            if nim_vios[vios]['ssp_id'] != 'none'
+              begin
+                st_clust = get_cluster_status(nim_vios, vios)
+              rescue ViosCmdError => e
+                msg = "Cluster status error: #{e.message}"
+                put_error(msg)
+              end
+              #success with cluster check
+              return 0 if st_clust == 0
+            else
+              #success with no cluster check
+              return 0
+            end
+          when -1
+           #error detected
+           return 1
+          else
+            #continue
+          end
+
+          if wait_time.modulo(60) == 0
+            msg = "Waiting VIOSUPGRADE on #{vios}... duration: #{wait_time / 60} minute(s)"
+            print("\033[2K\r#{msg}")
+            log_info(msg)
+          end
+        end # while count
+
+        # timed out before the end of viosupgrade
+        msg = "VIOS UPGRADE OPERATION for #{vios} TIME OUT #{count * sleep_time / 60} minute(s)"
+        put_error(msg)
+        -1
+      end
     end # Nim
 
     #################
@@ -1103,7 +1274,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli lspv\""
 
         log_debug("get_pvs: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1151,7 +1322,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli lspv -free\""
 
         log_debug("get_free_pvs: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1196,7 +1367,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli lsvg #{vg_name}\""
 
         log_info("get_vg_size: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1246,7 +1417,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/sbin/lsvg #{vg_name}\""
 
         log_info("get_vg_size: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1291,7 +1462,7 @@ module AIX
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/sbin/lsvg -p #{vg_name}\""
 
         log_info("get_pv_size_from_hdisk: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1357,7 +1528,7 @@ module AIX
         # The lsvg -M command lists the physical disks that contain the various logical volumes.
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/sbin/lsvg -M rootvg\""
         log_info("check_rootvg: '#{cmd_s}'")
-        Open3.popen3({ 'LANG' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1429,8 +1600,8 @@ module AIX
 
         if copy_dict.keys.length > 1
           if copy_dict.keys.length != hdisk_dict.keys.length
-            msg = "The #{vios} rootvg is partially or commpletly mirrored but somme "\
-                  'lpp copy are spread on several disks. This prevent the '\
+            msg = "The #{vios} rootvg is partially or completly mirrored but some "\
+                  'LP copies are spread on several disks. This prevent the '\
                   'system from building an alternate rootvg disk copy'
             put_error(msg)
             return vg_info
@@ -1660,6 +1831,7 @@ module AIX
       def get_altinst_rootvg_disk(nim_vios, vios, altdisk_hash)
         ret = 0
 
+
         begin
           get_pvs(nim_vios, vios)
         rescue ViosCmdError => e
@@ -1854,7 +2026,7 @@ module AIX
       array_fixes = []
       emgr_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{machine} \"/usr/sbin/emgr -l\""
       log_debug("EMGR list: #{emgr_s}")
-      exit_status = Open3.popen3({ 'LANG' => 'C' }, emgr_s) do |_stdin, stdout, stderr, wait_thr|
+      exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, emgr_s) do |_stdin, stdout, stderr, wait_thr|
         stdout.each_line do |line|
           line_array = line.split(' ')
           if line_array[0] =~ /[0-9]/
@@ -1874,32 +2046,84 @@ module AIX
     end
 
     # -----------------------------------------------------------------
-    # get locked packages
+    # name : get_locked_files
+    # param : input:target:string
     #
-    #    raise EmgrListError in case of error
+    # return array of locked files for a specific target
+    # description : get files impacted from specific fileset
+    #    raise CmdError in case of error
     # -----------------------------------------------------------------
-    def get_locked_packages(machine)
-      array_locked = []
-      emgr_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{machine} \"/usr/sbin/emgr -P\""
-      log_debug("EMGR listing package locks: #{emgr_s}")
-      exit_status = Open3.popen3({ 'LANG' => 'C' }, emgr_s) do |_stdin, stdout, stderr, wait_thr|
+    def get_locked_files(target)
+      log_info('Into get_locked_files (target=' + target + ')')
+      locked_files = []
+      locked_labels = []
+      #get efix label already installed
+      emgr_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{target} \"/usr/sbin/emgr -P\""
+      log_info("EMGR efix already install: #{emgr_s}")
+      exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, emgr_s) do |_stdin, stdout, stderr, wait_thr|
         stdout.each_line do |line|
           next if line =~ /^PACKAGE\s*INSTALLER\s*LABEL/
           next if line =~ /^=*\s\=*\s\=*/
           line_array = line.split(' ')
-          log_debug("emgr: adding locked package #{line_array[0]} to locked package list")
-          array_locked.push(line_array[0])
-          log_info("[STDOUT] #{line.chomp}")
+          log_debug("emgr: adding locked file #{line_array[2]} to locked files list")
+          locked_labels.push(line_array[2])
+          log_debug("[STDOUT] #{line.chomp}")
         end
         stderr.each_line do |line|
-          STDERR.puts line
-          log_info("[STDERR] #{line.chomp}")
+          log_debug("[STDERR] #{line.chomp}")
         end
         wait_thr.value # Process::Status object returned.
       end
-      raise EmgrListError, "Error: Command \"#{emgr_s}\" returns above error!" unless exit_status.success?
-      array_locked.delete_if { |item| item.nil? || item.empty? }
-      array_locked
+      raise CmdError, "Error: Command \"#{emgr_s}\" returns above error!" unless exit_status.success?
+      locked_labels.delete_if { |item| item.nil? || item.empty? }
+      locked_labels.uniq!
+      log_info("get_locked_files : get labels for: #{target} => #{locked_labels}")
+      locked_labels.each do |label|
+        files = get_efix_files(target,label)
+        files.each do |file|
+          locked_files << file
+        end
+      end
+      locked_files.uniq!
+      log_info("get_locked_files : for: #{target} => #{locked_files}")
+      locked_files
+    end
+
+    # -----------------------------------------------------------------
+    # name : get_efix_files
+    # param : input:target:string
+    # param : input:label:string
+    #
+    # return array of files
+    # description : get file locations impacted from specific efix
+    #    raise CmdError in case of error
+    # -----------------------------------------------------------------
+    def get_efix_files(target,
+                       label)
+      log_info('Into get_efix_files (target=' +
+                     target +
+                     '), label=' +
+                     label)
+      file_locations = []
+      cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{target} \"/usr/sbin/emgr -l -L #{label} -v3 | /bin/grep -w 'LOCATION:' | /bin/cut -c17-\""
+      log_info("get_efix_files: #{cmd_s}")
+      Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
+        stderr.each_line do |line|
+          log_debug("[STDERR] #{line.chomp}")
+        end
+        unless wait_thr.value.success?
+          stdout.each_line { |line| log_info("[STDOUT] #{line.chomp}") }
+          raise CmdError, "Error: Command \"#{cmd_s}\" returns above error!"
+        end
+        stdout.each_line do |line|
+          log_debug("[STDOUT] #{line.chomp}")
+          next unless line.include?('/')
+          file_locations << line.strip
+        end
+      end
+      file_locations.uniq!
+      log_info("get_efix_files for: #{target} : #{label}  => #{file_locations}")
+      file_locations
     end
 
     # -----------------------------------------------------------------
@@ -2336,5 +2560,186 @@ module AIX
       log_info("List of altdisk: #{altdisk_hash}")
       selected_vios
     end
+    # -----------------------------------------------------------------
+    # Buidl installdisk regarding the target vios pair list parameter
+    #
+    #    targets are in the form (vios1,vios2) (vios3,vios4) (vios5) (vios6)
+    #
+    #    for no installdisk checking installdisks should be nil otherwise
+    #    it should be the keyword 'skip' or in the form
+    #    (hdisk1,hdisk2) (hdisk1,) (hdisk5) ()
+    #    with the same number of hdisk than VIOSes even if empty
+    #
+    #    raise InvalidTargetsProperty in case of error
+    #
+    # -----------------------------------------------------------------
+    def build_installdisks(targets, vios_nim_list, installdisks)
+      installdisk_hash = {}
+      selected_vios = []
+      vios_list = []
+
+      vios_list_tuples = targets.delete(' ').gsub('),(', ')(').split('(')
+      vios_list_tuples.delete_at(0) # after the split, 1rst elt is nil
+
+      unless installdisks.nil? || installdisks == 'skip'
+        # Remove the spaces added here after after the tuple lengh has beed tested
+        hd_list_tuples = installdisks.delete(' ').gsub('),(', ')(').gsub('(,', '( ,').gsub(',)', ', )').split('(')
+        hd_list_tuples.delete_at(0)
+        if hd_list_tuples.length != vios_list_tuples.length
+          raise InvalidTargetsProperty, "Error: Install hdisks '#{installdisks}' and vios target '#{targets}' must have the same number of element"
+        end
+      end
+
+      # Build targets list
+      hd_tuple_index = 0
+      vios_list_tuples.each do |vios_tuple|
+        my_tuple = vios_tuple.delete(')')
+        tuple_elts = my_tuple.split(',')
+        tuple_len = tuple_elts.length
+
+        # check targets has the form of (vios1,vios2) or (vios3)
+        if tuple_len != 1 && tuple_len != 2
+          raise InvalidTargetsProperty, "Error: Malformed vios targets '#{targets}'"
+        end
+
+        # check vios not already exists in the target list
+        if vios_list.include?(tuple_elts[0]) ||
+           (tuple_len == 2 && (vios_list.include?(tuple_elts[1]) ||
+            tuple_elts[0] == tuple_elts[1]))
+          raise InvalidTargetsProperty, "Error: Malformed vios targets, Duplicated values '#{targets}'"
+        end
+
+        # check vios is knowed by the NIM master - if not ignore it
+        if !vios_nim_list.include?(tuple_elts[0]) ||
+           tuple_len == 2 && !vios_nim_list.include?(tuple_elts[1])
+          next
+        end
+
+        if tuple_len == 2
+          vios_list.push(tuple_elts[0], tuple_elts[1])
+        else
+          vios_list.push(tuple_elts[0])
+        end
+        selected_vios.push(my_tuple)
+
+        # Handle hdisk list if installdisks not nil
+        next if installdisks.nil?
+
+        # in skip mode, just add empty hdisk for the 2 vioses
+        if installdisks == 'skip'
+          installdisk_hash[tuple_elts[0]] = ''
+          installdisk_hash[tuple_elts[1]] = ''
+          next
+        end
+
+        # parse the hdisk tuple
+        hd_tuple = hd_list_tuples[hd_tuple_index].delete(')')
+        hd_tuple_elts = hd_tuple.split(',')
+        hd_tuple_len = hd_tuple_elts.length
+        if hd_tuple_len != tuple_len
+          raise InvalidTargetsProperty, "Error: install hdsik tuple '#{hd_tuple}' and vios tuple '#{my_tuple}' must have the same number of element"
+        end
+        installdisk_hash[tuple_elts[0]] = hd_tuple_elts[0].delete(' ')
+        if tuple_len == 2
+          installdisk_hash[tuple_elts[1]] = hd_tuple_elts[1].delete(' ')
+        end
+
+        hd_tuple_index += 1
+      end
+
+      log_info("List of install disks: #{installdisk_hash}")
+      installdisk_hash
+    end
+    # -----------------------------------------------------------------
+    # Buidl resources regarding the target vios pair list parameter
+    #
+    #    targets are in the form (vios1,vios2) (vios3,vios4) (vios5) (vios6)
+    #
+    #    for no resources checking resources should be nil otherwise
+    #    it should be the keyword 'skip' or in the form
+    #    (res11:res12,res21) (res1,) (res) ()
+    #    with the same number of resource than VIOSes even if empty
+    #
+    #    raise InvalidTargetsProperty in case of error
+    #
+    # -----------------------------------------------------------------
+    def build_resources(targets, vios_nim_list, resources)
+      resource_hash = {}
+      selected_vios = []
+      vios_list = []
+
+      vios_list_tuples = targets.delete(' ').gsub('),(', ')(').split('(')
+      vios_list_tuples.delete_at(0) # after the split, 1rst elt is nil
+
+      unless resources.nil? || resources == 'skip'
+        # Remove the spaces added here after after the tuple lengh has beed tested
+        rs_list_tuples = resources.delete(' ').gsub('),(', ')(').gsub('(,', '( ,').gsub(',)', ', )').split('(')
+        rs_list_tuples.delete_at(0)
+        if rs_list_tuples.length != vios_list_tuples.length
+          raise InvalidTargetsProperty, "Error: Install hdisks '#{resources}' and vios target '#{targets}' must have the same number of element"
+        end
+      end
+
+      # Build targets list
+      rs_tuple_index = 0
+      vios_list_tuples.each do |vios_tuple|
+        my_tuple = vios_tuple.delete(')')
+        tuple_elts = my_tuple.split(',')
+        tuple_len = tuple_elts.length
+
+        # check targets has the form of (vios1,vios2) or (vios3)
+        if tuple_len != 1 && tuple_len != 2
+          raise InvalidTargetsProperty, "Error: Malformed vios targets '#{targets}'"
+        end
+
+        # check vios not already exists in the target list
+        if vios_list.include?(tuple_elts[0]) ||
+           (tuple_len == 2 && (vios_list.include?(tuple_elts[1]) ||
+            tuple_elts[0] == tuple_elts[1]))
+          raise InvalidTargetsProperty, "Error: Malformed vios targets, Duplicated values '#{targets}'"
+        end
+
+        # check vios is knowed by the NIM master - if not ignore it
+        if !vios_nim_list.include?(tuple_elts[0]) ||
+           tuple_len == 2 && !vios_nim_list.include?(tuple_elts[1])
+          next
+        end
+
+        if tuple_len == 2
+          vios_list.push(tuple_elts[0], tuple_elts[1])
+        else
+          vios_list.push(tuple_elts[0])
+        end
+        selected_vios.push(my_tuple)
+
+        # Handle resources list if installdisks not nil
+        next if resources.nil?
+
+        # in skip mode, just add empty hdisk for the 2 vioses
+        if resources == 'skip'
+          resource_hash[tuple_elts[0]] = ''
+          resource_hash[tuple_elts[1]] = ''
+          next
+        end
+
+        # parse the resource tuple
+        rs_tuple = rs_list_tuples[rs_tuple_index].delete(')')
+        rs_tuple_elts = rs_tuple.split(',')
+        rs_tuple_len = rs_tuple_elts.length
+        if rs_tuple_len != tuple_len
+          raise InvalidTargetsProperty, "Error: install hdsik tuple '#{rs_tuple}' and vios tuple '#{my_tuple}' must have the same number of element"
+        end
+        resource_hash[tuple_elts[0]] = rs_tuple_elts[0].delete(' ')
+        if tuple_len == 2
+          resource_hash[tuple_elts[1]] = rs_tuple_elts[1].delete(' ')
+        end
+
+        rs_tuple_index += 1
+      end
+
+      log_info("List of resources: #{resource_hash}")
+      resource_hash
+    end
+
   end # module PatchMgmt
 end # module AIX
