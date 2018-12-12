@@ -680,11 +680,7 @@ module AIX
       # -----------------------------------------------------------------
       def get_fileset_files_loc(lpp_source_dir,
                                 fileset)
-        log_debug('Into get_fileset_files_loc' +
-                          ', lpp_source_dir=' +
-                          lpp_source_dir +
-                          ', fileset=' +
-                          fileset)
+        log_debug("Into get_fileset_files_loc: lpp_source_dir=#{lpp_source_dir}, fileset=#{fileset}")
         loc_files = []
         cmd_s = "/usr/sbin/emgr -d -e #{lpp_source_dir}/#{fileset} -v3 | /bin/grep -w 'LOCATION:' | /bin/cut -c17-"
         log_info("get_fileset_files_loc: #{cmd_s}")
@@ -1113,27 +1109,27 @@ module AIX
       def viosupgrade_query_status(vios)
         rc = 1
         nb_check = 0
-        #cmd_s = "/usr/sbin/viosupgrade -q -n #{vios}"
+        # cmd_s = "/usr/sbin/viosupgrade -q -n #{vios}"
         cmd_s = "/usr/sbin/lsnim -l #{vios}"
         err_info = false
         log_info("viosupgrade_query_status: '#{cmd_s}'")
         exit_status = Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
-         stdout.each_line do |line|
-          log_info("[STDOUT] #{line.chomp}")
-          line.chomp!
-          line.strip!
-          nb_check += 1 if line =~ /^Cstate\s+=\s+ready for a NIM operation$/
-          nb_check += 1 if line =~ /^Mstate\s+=\s+ready for use$/
-          nb_check += 1 if line =~ /^Mstate\s+=\s+currently running$/
-          nb_check += 1 if line =~ /^Cstate_result\s+=\s+success$/
-          nb_check -= 1 if line =~ /^info\s+=/
-          err_info = true if line =~ /^err_info\s+=/
-         end
-         stderr.each_line do |line|
-          STDERR.puts line
-          log_info("[STDERR] #{line.chomp}")
-         end
-         wait_thr.value # Process::Status object returned.
+          stdout.each_line do |line|
+            log_info("[STDOUT] #{line.chomp}")
+            line.chomp!
+            line.strip!
+            nb_check += 1 if line =~ /^Cstate\s+=\s+ready for a NIM operation$/
+            nb_check += 1 if line =~ /^Mstate\s+=\s+ready for use$/
+            nb_check += 1 if line =~ /^Mstate\s+=\s+currently running$/
+            nb_check += 1 if line =~ /^Cstate_result\s+=\s+success$/
+            nb_check -= 1 if line =~ /^info\s+=/
+            err_info = true if line =~ /^err_info\s+=/
+           end
+          stderr.each_line do |line|
+            STDERR.puts line
+            log_info("[STDERR] #{line.chomp}")
+          end
+          wait_thr.value # Process::Status object returned.
         end
         raise ViosUpgradeQueryError, "viosupgrade_query_status: #{cmd_s}' returns above error." unless exit_status.success?
         rc = 0 if nb_check == 3
@@ -1148,7 +1144,7 @@ module AIX
       #    Raise ViosCmdError in case of command error
       # -----------------------------------------------------------------
       def get_cluster_status(nim_vios, vios)
-        rc =1
+        rc = 1
         cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli cluster -status -fmt :\""
         log_info("get_cluster_status: '#{cmd_s}'")
         Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
