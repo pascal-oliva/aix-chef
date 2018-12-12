@@ -378,8 +378,8 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
   if !resources[vios].nil? && !resources[vios].empty?
     cmd << " -e #{resources[vios]}"
     cmd << ":#{common_resources}" if !common_resources.nil? && !common_resources.empty?
-  elseif !common_resources.nil? && !common_resources.empty?
-    cmd << " -e #{common_resources}"
+  else
+    cmd << " -e #{common_resources}" if !common_resources.nil? && !common_resources.empty?
   end
   log_info("[CMD] #{cmd}")
 
