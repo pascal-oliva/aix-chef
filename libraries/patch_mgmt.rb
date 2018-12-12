@@ -713,11 +713,7 @@ module AIX
       # -----------------------------------------------------------------
       def get_efix_files_loc(lpp_source_dir,
                                    filesets)
-        log_info('Into get_efix_files_loc' +
-                          ', lpp_source_dir=' +
-                          lpp_source_dir +
-                          ', filesets=' +
-                          filesets.to_s)
+        log_info("Into get_efix_files_loc: lpp_source_dir=#{lpp_source_dir}, fileset=#{filesets}")
         loc_files_h = {}
         filesets.each do |fileset|
           begin
@@ -1124,7 +1120,7 @@ module AIX
             nb_check += 1 if line =~ /^Cstate_result\s+=\s+success$/
             nb_check -= 1 if line =~ /^info\s+=/
             err_info = true if line =~ /^err_info\s+=/
-           end
+          end
           stderr.each_line do |line|
             STDERR.puts line
             log_info("[STDERR] #{line.chomp}")
@@ -1165,11 +1161,11 @@ module AIX
             line.chomp!
             line.strip!
             if line =~ /^(\S+):(\S+):(\S+):(\S+):(\d+):(\S+):(.*)/
-              if Regexp.last_match(6) == 'DOWN' || Regexp.last_match(7) == 'DOWN'
-                rc = 1
-              else
-                rc = 0
-              end
+              rc = if Regexp.last_match(6) == 'DOWN' || Regexp.last_match(7) == 'DOWN'
+                     1
+                   else
+                     0
+                   end
             end
           end
         end
@@ -1191,7 +1187,6 @@ module AIX
       #    raise ViosUpgradeQueryError if cannot get viosupgrade status
       # -----------------------------------------------------------------
       def wait_viosupgrade(nim_vios, vios, check_count = 360, sleep_time = 10)
-
         count = 0
         wait_time = 0
 
@@ -1216,7 +1211,7 @@ module AIX
           case st_upg
           when 0
             upgrade_status_ok = true
-            #if Cluster defined - check the if the clsuter is restarted if exist
+            # if cluster defined - check the if the clsuter is restarted if exist
             if nim_vios[vios]['ssp_id'] != 'none'
               begin
                 st_clust = get_cluster_status(nim_vios, vios)
@@ -1224,26 +1219,24 @@ module AIX
                 msg = "Cluster status error: #{e.message}"
                 put_error(msg)
               end
-              #success with cluster check
+              # success with cluster check
               return 0 if st_clust == 0
             else
-              #success with no cluster check
+              # success with no cluster check
               return 0
             end
           when -1
-           #error detected
-           return 1
+            # error detected
+            return 1
           else
-            #continue
+            # continue
           end
-
           if wait_time.modulo(60) == 0
             msg = "Waiting VIOSUPGRADE on #{vios}... duration: #{wait_time / 60} minute(s)"
             print("\033[2K\r#{msg}")
             log_info(msg)
           end
         end # while count
-
         # timed out before the end of viosupgrade
         msg = "VIOS UPGRADE OPERATION for #{vios} TIME OUT #{count * sleep_time / 60} minute(s)"
         put_error(msg)
