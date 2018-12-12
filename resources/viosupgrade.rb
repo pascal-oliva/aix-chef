@@ -380,8 +380,8 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
     if !common_resources.nil? && !common_resources.empty?
       cmd << ":#{common_resources}"
     end
-  elseif !common_resources.nil? && !common_resources.empty?
-    cmd << " -e #{common_resources}"
+  else
+    cmd << " -e #{common_resources}" if !common_resources.nil? && !common_resources.empty?
   end
   log_info("[CMD] #{cmd}")
 
@@ -392,7 +392,7 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
   cmd << ' -v' if !preview.nil? && !preview.empty? && preview == 'yes'
 
   # skip clone from viosupgrade command
-  cmd << " -s" if upgrade_type == 'bosinst' && upg_altdisk == 'no'
+  cmd << ' -s' if upgrade_type == 'bosinst' && upg_altdisk == 'no'
 
   # add vios target
   cmd << " -n #{vios}"
@@ -460,13 +460,13 @@ end
 #
 #    return  0 if OK
 #            1 else
+# rubocop:disable Style/GuardClause
 # -----------------------------------------------------------------
 def get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_status)
   ssp_name = ''
   vios_ssp_status = ''
   vios_name = ''
   err_label = 'FAILURE-SSP'
-  cluster_found = false
 
   vios_list.each do |vios|
     nim_vios[vios]['ssp_vios_status'] = 'none'
@@ -484,10 +484,12 @@ def get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_statu
       #cluster found
       log_info("[VIOS CLUSTER ID] #{nim_vios[vios]['ssp_id']}")
     rescue ViosNoClusterFound => e
+       msg = "No cluster found: #{e.message} => continue to upgrade"
+       log_info(msg)
       return 0 # no cluster found => continue to upgrade
     end
 
-    #command for the status
+    # command for cluster status
     cmd_s = "/usr/lpp/bos.sysmgt/nim/methods/c_rsh #{nim_vios[vios]['vios_ip']} \"/usr/ios/cli/ioscli cluster -status -fmt :\""
     log_debug("ssp_status: '#{cmd_s}'")
     Open3.popen3({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cmd_s) do |_stdin, stdout, stderr, wait_thr|
@@ -1103,6 +1105,7 @@ action :upgrade do
       begin
         ret = vio_server.get_altinst_rootvg_disk(nim_vios, vios, altdisk_hash)
       rescue AltDiskFindError => e
+        msg = "Cleanup failed: #{e.message}"
         put_error(msg)
         ret = 1
         targets_status[vios_key] = if vios == vios1
