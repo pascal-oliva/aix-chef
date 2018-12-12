@@ -377,11 +377,9 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
   # resources
   if !resources[vios].nil? && !resources[vios].empty?
     cmd << " -e #{resources[vios]}"
-    if !common_resources.nil? && !common_resources.empty?
-      cmd << ":#{common_resources}"
-    end
-  else
-    cmd << " -e #{common_resources}" if !common_resources.nil? && !common_resources.empty?
+    cmd << ":#{common_resources}" if !common_resources.nil? && !common_resources.empty?
+  elseif !common_resources.nil? && !common_resources.empty?
+    cmd << " -e #{common_resources}"
   end
   log_info("[CMD] #{cmd}")
 
@@ -1003,7 +1001,7 @@ action :upgrade do
             end
             if ret != 0
               targets_status[vios_key] = if vios == vios1
-                                          'FAILURE-CHECK_ALT_DISK_VIOS1'
+                                           'FAILURE-CHECK_ALT_DISK_VIOS1'
                                          else
                                            'FAILURE-CHECK_ALT_DISK_VIOS2'
                                          end
@@ -1145,5 +1143,4 @@ action :upgrade do
   targets_status.each do |targ, v|
     put_info("Status  for :#{targ} => #{v}\n")
   end
-
 end
