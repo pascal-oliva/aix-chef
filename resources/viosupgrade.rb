@@ -928,12 +928,11 @@ action :upgrade do
       end
 
       vios_list.each do |vios|
-
         targets_status[vios_key] = 'SUCCESS-VALIDATE'
         begin
           cmd_to_run = get_viosupgrade_cmd(nim_vios, vios, new_resource.viosupgrade_type,
             new_resource.ios_mksysb_name, installdisk_hash, altdisk_hash,
-            resource_hash, new_resource.common_resources,'yes', new_resource.viosupgrade_alt_disk_copy)
+            resource_hash, new_resource.common_resources, 'yes', new_resource.viosupgrade_alt_disk_copy)
         rescue ViosUpgradeBadProperty, ViosResourceBadLocation => e
           put_error("Upgrade #{vios_key}: #{e.message}")
           targets_status[vios_key] = 'FAILURE-VALIDATE'
@@ -964,24 +963,24 @@ action :upgrade do
       put_info("VIOS UPGRADE - type=#{new_resource.viosupgrade_type}")
       put_info("VIOS UPGRADE - mksysb resource=#{new_resource.ios_mksysb_name}")
 
-       # check SSP status of the tuple
-       # Upgrade can only be done when current VIOS is UP and VIOS Dual is UP
-       # or if current vios is DOWN
-       ret = 0
-       begin
-         ret = get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_status)
-       rescue ViosCmdError => e
-         put_error(e.message)
-         targets_status[vios_key] = 'FAILURE-VALIDATE'
-         log_info("Upgrade status for #{vios_key}: #{targets_status[vios_key]}")
-         next # cannot continue - switch to next tuple
-        end
-        if ret == 1
-          put_warn("Upgrade operation for #{vios_key} vioses skipped due to bad SSP status")
-          put_info('Upgrade operation can be done if both of the VIOSes have the SSP status = UP')
-          targets_status[vios_key] = 'FAILURE-VALIDATE'
-          next # switch to next tuple
-        end
+      # check SSP status of the tuple
+      # Upgrade can only be done when current VIOS is UP and VIOS Dual is UP
+      # or if current vios is DOWN
+      ret = 0
+      begin
+        ret = get_vios_ssp_status_for_upgrade(nim_vios, vios_list, vios_key, targets_status)
+      rescue ViosCmdError => e
+        put_error(e.message)
+        targets_status[vios_key] = 'FAILURE-VALIDATE'
+        log_info("Upgrade status for #{vios_key}: #{targets_status[vios_key]}")
+        next # cannot continue - switch to next tuple
+      end
+      if ret == 1
+        put_warn("Upgrade operation for #{vios_key} vioses skipped due to bad SSP status")
+        put_info('Upgrade operation can be done if both of the VIOSes have the SSP status = UP')
+        targets_status[vios_key] = 'FAILURE-VALIDATE'
+        next # switch to next tuple
+      end
 
       if new_resource.action_list.include?('validate') && targets_status[vios_key] != 'SUCCESS-VALIDATE'
         put_warn("Upgrade of #{vios_key} vioses skipped (previous status: #{targets_status[vios_key]})")
@@ -990,11 +989,9 @@ action :upgrade do
 
       # check if there is time to handle this tuple
       if end_time.nil? || Time.now <= end_time
-
         targets_status[vios_key] = 'SUCCESS-UPGRADE'
         vios_list.each do |vios|
-
-          #Check if altinst_rootvg exists else next tuple only for bosint
+          # check if altinst_rootvg exists else next tuple only for bosint
           if new_resource.viosupgrade_type == 'bosinst' && new_resource.viosupgrade_alt_disk_copy == 'no'
             ret = 0
             begin
@@ -1008,7 +1005,7 @@ action :upgrade do
               targets_status[vios_key] = if vios == vios1
                                           'FAILURE-CHECK_ALT_DISK_VIOS1'
                                          else
-                                          'FAILURE-CHECK_ALT_DISK_VIOS2'
+                                           'FAILURE-CHECK_ALT_DISK_VIOS2'
                                          end
               put_warn("No No alternate disk found on '#{vios}'.")
               break # switch to next tuple
@@ -1020,7 +1017,7 @@ action :upgrade do
             cmd_to_run = get_viosupgrade_cmd(nim_vios, vios,
               new_resource.viosupgrade_type, new_resource.ios_mksysb_name,
               installdisk_hash, altdisk_hash, resource_hash,
-              new_resource.common_resources,'no', new_resource.viosupgrade_alt_disk_copy)
+              new_resource.common_resources, 'no', new_resource.viosupgrade_alt_disk_copy)
           rescue ViosUpgradeBadProperty, VioslppSourceBadLocation => e
             put_error("Upgrade #{vios_key}: #{e.message}")
             targets_status[vios_key] = 'FAILURE-UPGRAD1'
@@ -1033,7 +1030,7 @@ action :upgrade do
           err_label = if vios == vios1
                         'FAILURE-UPGRAD1'
                       else
-                        'FAILURE-UPGRAD1'
+                        'FAILURE-UPGRAD2'
                       end
 
           converge_by("\n nim: perform NIM viosupgrade for vios '#{vios}'\n") do
@@ -1047,7 +1044,6 @@ action :upgrade do
               # in case of failure
               break_required = true
             end
-
             # wait the end of viosupgrade operation
             begin
               ret = nim.wait_viosupgrade(nim_vios, vios)
@@ -1056,24 +1052,22 @@ action :upgrade do
               log_warn("[#{vios}] #{e.message}")
               ret = 1
             end
-
             case ret
             when 0
               targets_status[vios_key] = 'SUCCESS-UPGRADE'
               put_info("[#{vios}] VIOS Upgrade succeeded")
             when -1
-                msg = "VIOSUPGRADE failed on #{vios}: timed out"
-                put_warn(msg)
-                STDERR.puts "#{msg}"
-                targets_status[vios_key] = error_label
+              msg = "VIOSUPGRADE failed on #{vios}: timed out"
+              put_warn(msg)
+              STDERR.puts msg
+              targets_status[vios_key] = error_label
             else
-                msg = "VIOSUPGRADE failed on #{vios}"
-                put_warn(msg)
-                STDERR.puts "#{msg}"
-                targets_status[vios_key] = error_label
+              msg = "VIOSUPGRADE failed on #{vios}"
+              put_warn(msg)
+              STDERR.puts msg
+              targets_status[vios_key] = error_label
             end
           end # end converge_by
-
           break if break_required
         end
       else
