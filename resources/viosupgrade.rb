@@ -347,18 +347,18 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
 
   # type
   if !upgrade_type.nil? && !upgrade_type.empty?
-   cmd << " -t #{upgrade_type}"
-   log_info("[CMD] #{cmd}")
+    cmd << " -t #{upgrade_type}"
+    log_info("[CMD] #{cmd}")
   end
 
   # mksysb and spot if necessary
   if !ios_mksysb.nil? && !ios_mksysb.empty? && check_resource_location(ios_mksysb)
     cmd << " -m #{ios_mksysb}"
-    #get spot from mksysb
+    # get spot from mksysb
     if upgrade_type == 'bosinst'
-       spot = get_spot_from_mksysb(ios_mksysb)
-       cmd << " -p #{spot}"
-       log_info("[CMD] #{cmd}")
+      spot = get_spot_from_mksysb(ios_mksysb)
+      cmd << " -p #{spot}"
+      log_info("[CMD] #{cmd}")
     end
   end
 
@@ -376,28 +376,25 @@ def get_viosupgrade_cmd(nim_vios, vios, upgrade_type, ios_mksysb, installdisk, a
 
   # resources
   if !resources[vios].nil? && !resources[vios].empty?
-    #TODO check resource location for each resource
     cmd << " -e #{resources[vios]}"
     if !common_resources.nil? && !common_resources.empty?
       cmd << ":#{common_resources}"
     end
-  else
-      if !common_resources.nil? && !common_resources.empty?
-         cmd << " -e #{common_resources}"
-      end
-   end
+  elseif !common_resources.nil? && !common_resources.empty?
+    cmd << " -e #{common_resources}"
+  end
   log_info("[CMD] #{cmd}")
 
   # cluster
-  cmd << " -c" if nim_vios[vios]['ssp_vios_status'] == 'OK'
+  cmd << ' -c' if nim_vios[vios]['ssp_vios_status'] == 'OK'
 
   # validation preview mode
-  cmd << " -v" if !preview.nil? && !preview.empty? && preview == 'yes'
+  cmd << ' -v' if !preview.nil? && !preview.empty? && preview == 'yes'
 
   # skip clone from viosupgrade command
   cmd << " -s" if upgrade_type == 'bosinst' && upg_altdisk == 'no'
 
-  #add vios target
+  # add vios target
   cmd << " -n #{vios}"
   log_debug("get_viosupgrade_cmd - return cmd: '#{cmd}'")
   cmd
@@ -413,7 +410,7 @@ def run_viosupgrade(vios, cmd_s)
   put_info("Start upgrading vios '#{vios}' with viosupgrade.")
   log_info("run_viosupgrade: '#{cmd_s}'")
   if cmd_s.include?(' -v')
-    put_info("validate operation.")
+    put_info('validate operation.')
   else
     put_info("Starting viosupgrade operation for vios '#{vios}'.")
   end
