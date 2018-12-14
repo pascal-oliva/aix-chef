@@ -449,6 +449,8 @@ Add, change or remove entries in the /etc/hosts file.
 
 #### Actions
 
+To ensure an entry is added and stays set correctly, use both the :add and :change actions as shown in the 5th example below.
+
 - `add` - add an entry in /etc/hosts
 - `delete` - remove an entry in /etc/hosts
 - `delete_all` - remove all entries in /etc/hosts
@@ -479,6 +481,15 @@ aix_etchosts "test" do
 end
 
 aix_etchosts "test" do
+  action :delete
+end
+
+aix_etchosts '1.1.1.4' do
+  aliases ['test4', 'test5']
+  action [:add, :change]
+end
+
+aix_etchosts "1.1.1.4" do
   action :delete
 end
 
@@ -644,6 +655,7 @@ If space is needed, filesystem is automatically extended by increment of 100MB.
 - `filesets` - filter on fileset name
 - `csv` - custom apar csv file
 - `path` - directory where the report is saved
+- `force` - if true, installed interim fixes will be automatically removed (default: false)
 - `clean` - clean temporary files and remove nim lpp_source resource (default: true)
 - `verbose` - save and display the report in verbose mode (default: false)
 - `check_only` - generate report only, no fixes are downloaded nor installed (default: false)
